@@ -1,3 +1,24 @@
+## v1.1.0 (2026-03-26)
+
+### Added
+- `WikipediaService` — 한국어 Wikipedia REST API 프록시 (랜덤 문서 요약, 문서 HTML, 문서 요약)
+- `WikiController` (`/api/wiki/**`) — Wikipedia API 4개 엔드포인트
+  - `GET /api/wiki/random` — 랜덤 문서 요약
+  - `GET /api/wiki/page/html/{title}` — 문서 HTML 반환
+  - `GET /api/wiki/page/summary/{title}` — 문서 요약 반환
+  - `GET /api/wiki/target/random` — DB에서 랜덤 제시어 조회
+- `target_words` 테이블 — 제시어 DB 관리 (word_id, word, difficulty, created_at)
+- `TargetWordVO`, `TargetWordMapper` (MyBatis) — 제시어 CRUD
+- `mapper/game/TargetWordMapper.xml` — 랜덤 조회·전체 목록·추가·삭제 쿼리
+- `schema-init.sql` — target_words DDL + 초기 제시어 4건 (미국/바나나/배트맨/환풍기, 난이도 포함)
+
+### Changed
+- `SecurityConfig` — `/wiki/**`, `/api/wiki/**` 경로 `permitAll` 추가 (비로그인 게임 플레이 지원)
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.0.0 (2026-03-24)
 
 ### Added
