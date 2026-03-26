@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wikisprint.server.mapper.TargetWordMapper">
+
+    <resultMap id="TargetWordResultMap" type="TargetWordVO">
+        <id     property="wordId"     column="word_id"     />
+        <result property="word"       column="word"        />
+        <result property="difficulty" column="difficulty"  />
+        <result property="createdAt"  column="created_at"  />
+    </resultMap>
+
+    <!-- 랜덤 제시어 1개 조회 -->
+    <select id="selectRandomWord" resultMap="TargetWordResultMap">
+        SELECT word_id, word, difficulty, created_at
+        FROM target_words
+        ORDER BY RANDOM()
+        LIMIT 1
+    </select>
+
+    <!-- 전체 제시어 목록 조회 -->
+    <select id="selectAllWords" resultMap="TargetWordResultMap">
+        SELECT word_id, word, difficulty, created_at
+        FROM target_words
+        ORDER BY word_id
+    </select>
+
+    <!-- 제시어 추가 -->
+    <insert id="insertWord">
+        INSERT INTO target_words (word, difficulty)
+        VALUES (#{word}, #{difficulty})
+    </insert>
+
+    <!-- 제시어 삭제 -->
+    <delete id="deleteWord">
+        DELETE FROM target_words
+        WHERE word_id = #{wordId}
+    </delete>
+
+</mapper>

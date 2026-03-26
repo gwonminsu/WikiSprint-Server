@@ -10,9 +10,25 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.0.0-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.1.0-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
+
+---
+
+## 🎮 WikiSprint이란?
+
+**WikiSprint**는 유튜버 **침착맨**이 소개한 나무위키 스피드런에서 영감을 받아 만들어진 위키 스피드런 게임입니다.
+
+[Wikipedia REST API](https://ko.wikipedia.org/api/rest_v1/) (CC BY-SA 3.0)를 활용해 위키피디아 문서를 제공하며, **제시어**가 주어지면 무작위 위키피디아 문서에서 출발해 문서 내 링크만을 따라 목표 문서에 가장 빠르게 도달하는 것이 목표입니다. 백엔드가 Wikipedia API를 경유하여 캐싱 및 데이터 가공을 담당합니다.
+
+### 게임 규칙
+
+- 게임 시작 버튼을 누르는 순간 타이머가 시작됩니다
+- 문서 내 링크만을 이용해 제시어 문서까지 이동해야 합니다
+- 비로그인 상태로도 플레이 가능, 랭킹 등록·댓글은 로그인 필요
+
+> 📄 콘텐츠 출처: [Wikipedia](https://ko.wikipedia.org/) (CC BY-SA 3.0)
 
 ---
 
@@ -56,10 +72,10 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController
-├── service/             # AuthService, AccountService
-├── mapper/              # AccountMapper (MyBatis DAO)
-├── vo/                  # AccountVO
+├── controller/          # AuthController, AccountController, WikiController
+├── service/             # AuthService, AccountService, WikipediaService
+├── mapper/              # AccountMapper, TargetWordMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO
 ├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>, TokenDTO
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
@@ -93,6 +109,15 @@ com.wikisprint.server/
 | `/api/account/profile/remove` | POST | ✅ Bearer | 프로필 이미지 삭제 |
 | `/api/account/profile/image/**` | GET | ❌ | 프로필 이미지 정적 서빙 |
 
+### 위키 (Wiki)
+
+| 엔드포인트 | 메서드 | 인증 | 설명 |
+|-----------|--------|------|------|
+| `/api/wiki/random` | GET | ❌ | 랜덤 Wikipedia 문서 요약 |
+| `/api/wiki/page/html/{title}` | GET | ❌ | 문서 HTML 반환 |
+| `/api/wiki/page/summary/{title}` | GET | ❌ | 문서 요약 반환 |
+| `/api/wiki/target/random` | GET | ❌ | DB에서 랜덤 제시어 조회 |
+
 ### 응답 형식
 
 ```json
@@ -107,7 +132,9 @@ com.wikisprint.server/
 
 ## 🗄 데이터베이스 스키마
 
-스키마: `wikisprint` · 테이블: `accounts`
+스키마: `wikisprint`
+
+### accounts
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
@@ -119,6 +146,15 @@ com.wikisprint.server/
 | `last_login` | TIMESTAMP | 최근 로그인 시각 |
 | `created_at` | TIMESTAMP | 계정 생성 시각 |
 | `updated_at` | TIMESTAMP | 마지막 수정 시각 |
+
+### target_words
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `word_id` | SERIAL PK | 제시어 ID |
+| `word` | VARCHAR(100) UNIQUE | 제시어 텍스트 |
+| `difficulty` | SMALLINT | 난이도 (1: 쉬움, 2: 보통, 3: 어려움) |
+| `created_at` | TIMESTAMP | 등록 시각 |
 
 > 초기화 스크립트: [`src/main/resources/schema-init.sql`](./src/main/resources/schema-init.sql)
 
