@@ -1,3 +1,23 @@
+## v1.2.0 (2026-03-29)
+
+### Changed
+- `target_words` 테이블에 `lang` 칼럼 추가 — 언어별(ko/en/ja) 제시어 구분
+  - `UNIQUE(word)` → `UNIQUE(word, lang)` 복합 유니크 제약조건 변경
+  - 영어(en) 4건, 일본어(ja) 4건 시드 데이터 추가
+- `WikipediaService` — 하드코딩 `ko.wikipedia.org` → `{lang}.wikipedia.org` 동적 URL 분기
+  - 허용 언어 검증 (`ko`, `en`, `ja`), 비허용 시 `ko` 기본값
+- `WikiController` — 4개 엔드포인트에 `?lang=` 쿼리 파라미터 추가 (기본값: `ko`)
+  - `GET /api/wiki/random?lang=`
+  - `GET /api/wiki/page/html/{title}?lang=`
+  - `GET /api/wiki/page/summary/{title}?lang=`
+  - `GET /api/wiki/target/random?lang=`
+- `TargetWordMapper` — `selectRandomWord`에 `lang` 필터 추가, `insertWord`에 `lang` 칼럼 추가
+- `TargetWordVO` — `lang` 필드 추가
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.1.0 (2026-03-26)
 
 ### Added

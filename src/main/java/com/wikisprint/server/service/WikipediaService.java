@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Wikipedia REST API 연동 서비스
@@ -20,8 +21,17 @@ public class WikipediaService {
 
     private final RestTemplate restTemplate;
 
-    private static final String WIKI_API_BASE = "https://ko.wikipedia.org/api/rest_v1";
     private static final String USER_AGENT = "WikiSprint/1.0 (https://github.com/wikisprint; contact@wikisprint.com) RestTemplate";
+    private static final Set<String> ALLOWED_LANGS = Set.of("ko", "en", "ja");
+
+    /**
+     * 언어 코드 검증 후 Wikipedia API Base URL 반환
+     * 허용되지 않은 언어 코드는 'ko'로 기본값 처리
+     */
+    private String getWikiApiBase(String lang) {
+        String validLang = ALLOWED_LANGS.contains(lang) ? lang : "ko";
+        return "https://" + validLang + ".wikipedia.org/api/rest_v1";
+    }
 
     /**
      * Wikipedia API 공통 요청 헤더 생성
@@ -38,8 +48,8 @@ public class WikipediaService {
      * GET /page/random/summary
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getRandomSummary() {
-        String url = WIKI_API_BASE + "/page/random/summary";
+    public Map<String, Object> getRandomSummary(String lang) {
+        String url = getWikiApiBase(lang) + "/page/random/summary";
         HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
         ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
         return (Map<String, Object>) response.getBody();
@@ -49,8 +59,8 @@ public class WikipediaService {
      * 문서 HTML 조회
      * GET /page/html/{title}
      */
-    public String getArticleHtml(String title) {
-        String url = WIKI_API_BASE + "/page/html/" + title;
+    public String getArticleHtml(String title, String lang) {
+        String url = getWikiApiBase(lang) + "/page/html/" + title;
         HttpHeaders headers = buildHeaders();
         headers.set("Accept", "text/html; charset=utf-8");
         HttpEntity<Void> entity = new HttpEntity<>(headers);
@@ -63,8 +73,8 @@ public class WikipediaService {
      * GET /page/summary/{title}
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getArticleSummary(String title) {
-        String url = WIKI_API_BASE + "/page/summary/" + title;
+    public Map<String, Object> getArticleSummary(String title, String lang) {
+        String url = getWikiApiBase(lang) + "/page/summary/" + title;
         HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
         ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
         return (Map<String, Object>) response.getBody();
