@@ -27,12 +27,12 @@ public class WikiController {
 
     /**
      * 랜덤 위키피디아 문서 요약 조회
-     * GET /api/wiki/random
+     * GET /api/wiki/random?lang=ko
      */
     @GetMapping("/random")
-    public ResponseEntity<?> getRandomArticle() {
+    public ResponseEntity<?> getRandomArticle(@RequestParam(defaultValue = "ko") String lang) {
         try {
-            Map<String, Object> summary = wikipediaService.getRandomSummary();
+            Map<String, Object> summary = wikipediaService.getRandomSummary(lang);
             return ResponseEntity.ok(ApiResponse.success(summary));
         } catch (RestClientException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
@@ -45,12 +45,13 @@ public class WikiController {
 
     /**
      * 특정 문서 HTML 조회
-     * GET /api/wiki/page/html/{title}
+     * GET /api/wiki/page/html/{title}?lang=ko
      */
     @GetMapping("/page/html/{title}")
-    public ResponseEntity<?> getArticleHtml(@PathVariable String title) {
+    public ResponseEntity<?> getArticleHtml(@PathVariable String title,
+                                             @RequestParam(defaultValue = "ko") String lang) {
         try {
-            String html = wikipediaService.getArticleHtml(title);
+            String html = wikipediaService.getArticleHtml(title, lang);
             return ResponseEntity.ok(ApiResponse.success(Map.of("html", html)));
         } catch (RestClientException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
@@ -63,12 +64,12 @@ public class WikiController {
 
     /**
      * 랜덤 제시어 조회
-     * GET /api/wiki/target/random
+     * GET /api/wiki/target/random?lang=ko
      */
     @GetMapping("/target/random")
-    public ResponseEntity<?> getRandomTargetWord() {
+    public ResponseEntity<?> getRandomTargetWord(@RequestParam(defaultValue = "ko") String lang) {
         try {
-            TargetWordVO word = targetWordMapper.selectRandomWord();
+            TargetWordVO word = targetWordMapper.selectRandomWord(lang);
             if (word == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("등록된 제시어가 없습니다."));
@@ -82,12 +83,13 @@ public class WikiController {
 
     /**
      * 특정 문서 요약 조회
-     * GET /api/wiki/page/summary/{title}
+     * GET /api/wiki/page/summary/{title}?lang=ko
      */
     @GetMapping("/page/summary/{title}")
-    public ResponseEntity<?> getArticleSummary(@PathVariable String title) {
+    public ResponseEntity<?> getArticleSummary(@PathVariable String title,
+                                                @RequestParam(defaultValue = "ko") String lang) {
         try {
-            Map<String, Object> summary = wikipediaService.getArticleSummary(title);
+            Map<String, Object> summary = wikipediaService.getArticleSummary(title, lang);
             return ResponseEntity.ok(ApiResponse.success(summary));
         } catch (RestClientException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)

@@ -43,20 +43,22 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 **패키지 구조:**
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController
-├── service/             # AuthService, AccountService
-├── mapper/              # AccountMapper (MyBatis DAO)
-├── vo/                  # AccountVO
+├── controller/          # AuthController, AccountController, WikiController
+├── service/             # AuthService, AccountService, WikipediaService
+├── mapper/              # AccountMapper, TargetWordMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO
 ├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>
 └── global/
-    ├── config/          # SecurityConfig, GoogleOAuthConfig
+    ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
     └── common/
         ├── auth/        # JwtTokenProvider, JwtAuthenticationFilter
         ├── status/      # 커스텀 예외
         └── util/        # FileStorageUtil
 ```
 
-**MyBatis Mapper XML 위치:** `src/main/resources/mapper/user/`
+**MyBatis Mapper XML 위치:**
+- `src/main/resources/mapper/user/` — AccountMapper
+- `src/main/resources/mapper/game/` — TargetWordMapper
 
 ## 핵심 시스템
 
@@ -74,18 +76,25 @@ POST /auth/google (credential: Google ID Token)
 ### 데이터베이스 스키마 (PostgreSQL)
 
 - 스키마: `wikisprint` (connection-init-sql로 설정)
-- 테이블: `accounts` (단일 테이블, google_id로 계정 식별)
+- 테이블: `accounts` (계정, google_id로 식별)
   - `account_id` VARCHAR(50) PK
   - `google_id` VARCHAR(255) UNIQUE
   - `email` VARCHAR(255)
   - `nick` VARCHAR(50)
   - `profile_img_url` VARCHAR(500)
   - `last_login`, `created_at`, `updated_at`
+- 테이블: `target_words` (제시어)
+  - `word_id` SERIAL PK
+  - `word` VARCHAR(100)
+  - `difficulty` SMALLINT (1: 쉬움, 2: 보통, 3: 어려움)
+  - `lang` VARCHAR(5) (ko, en, ja)
+  - `created_at` TIMESTAMP
+  - UNIQUE(word, lang)
 
 ### 보안 설정
 
 - CORS 허용: `http://localhost:5969` (프론트엔드)
-- 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`
+- 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`
 - 보호된 엔드포인트: JWT Bearer 토큰 필요
 
 ## 외부 의존성
