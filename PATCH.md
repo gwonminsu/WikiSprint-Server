@@ -1,3 +1,24 @@
+## v1.3.0 (2026-04-02)
+
+### Added
+- `AdminController` 신규 생성 — 제시어 CRUD 3개 엔드포인트 (JWT + DB `is_admin` 이중 검증)
+  - `POST /admin/words/list` — 전체 제시어 목록 조회
+  - `POST /admin/words/add` — 제시어 추가 (body: `{ word, difficulty, lang }`)
+  - `POST /admin/words/delete` — 제시어 삭제 (body: `{ wordId }`)
+- `accounts` 테이블에 `is_admin BOOLEAN NOT NULL DEFAULT FALSE` 컬럼 추가 (schema-init.sql + ALTER TABLE 마이그레이션)
+- `AccountVO`에 `isAdmin` 필드 추가 (`@JsonProperty("is_admin")`)
+
+### Changed
+- `AuthService.googleLogin()` — 관리자 계정에 `ROLE_ADMIN` authority 추가, 반환 Map에 `is_admin` 포함
+- `AccountController` (`/account/me`, `/account/detail`) — 응답에 `is_admin` 필드 추가
+- `AuthController.googleLogin()` — 응답 data Map에 `is_admin` 포함 (누락 버그 수정)
+- `AccountMapper.xml` — 전체 SELECT 쿼리에 `is_admin` 컬럼 포함
+- `SecurityConfig` — `/admin/**` 경로의 `hasRole("ADMIN")` 제거 → `anyRequest().authenticated()` + `AdminController.resolveAdmin()` DB 레벨 검증으로 전환
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.2.0 (2026-03-29)
 
 ### Changed

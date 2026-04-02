@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/account/profile/image/**", "/api/account/profile/image/**").permitAll()
                         // Wikipedia API 프록시 — 비로그인 접근 허용 (게임은 비로그인도 가능)
                         .requestMatchers("/wiki/**", "/api/wiki/**").permitAll()
+                        // 관리자 전용 엔드포인트 — DB 레벨 검증은 AdminController.resolveAdmin()에서 처리
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class);

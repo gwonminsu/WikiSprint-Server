@@ -71,8 +71,12 @@ public class AuthService {
             log.info("AUTO REGISTER SUCCESS google_id: {}, email: {}", googleId, email);
         }
 
-        // JWT 발급
-        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        // JWT 발급 (관리자인 경우 ROLE_ADMIN 추가)
+        List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        if (Boolean.TRUE.equals(account.getIsAdmin())) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(account.getUuid(), null, authorities);
         TokenDTO token = jwtTokenProvider.createAllToken(authToken);
@@ -85,6 +89,7 @@ public class AuthService {
                 "nick", account.getNick(),
                 "email", account.getEmail(),
                 "profile_img_url", account.getProfileImgUrl() != null ? account.getProfileImgUrl() : "",
+                "is_admin", Boolean.TRUE.equals(account.getIsAdmin()),
                 "token", token
         );
     }

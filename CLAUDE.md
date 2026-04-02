@@ -43,7 +43,7 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 **패키지 구조:**
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController, WikiController
+├── controller/          # AuthController, AccountController, WikiController, AdminController
 ├── service/             # AuthService, AccountService, WikipediaService
 ├── mapper/              # AccountMapper, TargetWordMapper (MyBatis DAO)
 ├── vo/                  # AccountVO, TargetWordVO
@@ -82,6 +82,7 @@ POST /auth/google (credential: Google ID Token)
   - `email` VARCHAR(255)
   - `nick` VARCHAR(50)
   - `profile_img_url` VARCHAR(500)
+  - `is_admin` BOOLEAN NOT NULL DEFAULT FALSE
   - `last_login`, `created_at`, `updated_at`
 - 테이블: `target_words` (제시어)
   - `word_id` SERIAL PK
@@ -96,6 +97,15 @@ POST /auth/google (credential: Google ID Token)
 - CORS 허용: `http://localhost:5969` (프론트엔드)
 - 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`
 - 보호된 엔드포인트: JWT Bearer 토큰 필요
+- 관리자 엔드포인트 (`/admin/**`): JWT 인증 + `AdminController.resolveAdmin()` DB 레벨 `is_admin` 이중 검증
+
+### 관리자 API (`/api/admin/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /admin/words/list` | 전체 제시어 목록 조회 | JWT + is_admin |
+| `POST /admin/words/add` | 제시어 추가 (body: `{ word, difficulty, lang }`) | JWT + is_admin |
+| `POST /admin/words/delete` | 제시어 삭제 (body: `{ wordId }`) | JWT + is_admin |
 
 ## 외부 의존성
 

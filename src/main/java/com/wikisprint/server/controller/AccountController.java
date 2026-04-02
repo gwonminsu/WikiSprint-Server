@@ -58,6 +58,7 @@ public class AccountController {
         data.put("nick", accountVO.getNick());
         data.put("email", accountVO.getEmail());
         data.put("profile_img_url", accountVO.getProfileImgUrl());
+        data.put("is_admin", Boolean.TRUE.equals(accountVO.getIsAdmin()));
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
@@ -78,6 +79,7 @@ public class AccountController {
         data.put("nick", accountVO.getNick());
         data.put("email", accountVO.getEmail());
         data.put("profile_img_url", accountVO.getProfileImgUrl());
+        data.put("is_admin", Boolean.TRUE.equals(accountVO.getIsAdmin()));
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
