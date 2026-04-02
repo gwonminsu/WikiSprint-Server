@@ -11,10 +11,14 @@ CREATE TABLE IF NOT EXISTS accounts (
     email           VARCHAR(255)  NOT NULL,
     nick            VARCHAR(50)   NOT NULL,
     profile_img_url VARCHAR(500),
+    is_admin        BOOLEAN       NOT NULL DEFAULT FALSE,
     last_login      TIMESTAMP,
     created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 기존 DB 마이그레이션용 (이미 테이블이 존재하는 경우)
+ALTER TABLE IF EXISTS accounts ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_accounts_google_id ON accounts(google_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);

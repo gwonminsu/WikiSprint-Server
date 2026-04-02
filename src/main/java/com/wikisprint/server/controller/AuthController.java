@@ -36,7 +36,8 @@ public class AuthController {
                     "uuid", result.get("uuid"),
                     "nick", result.get("nick"),
                     "email", result.get("email"),
-                    "profile_img_url", result.get("profile_img_url")
+                    "profile_img_url", result.get("profile_img_url"),
+                    "is_admin", result.get("is_admin")
             );
 
             return ResponseEntity.ok(ApiResponse.withAuth(

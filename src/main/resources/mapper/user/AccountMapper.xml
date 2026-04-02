@@ -28,19 +28,19 @@
 
     <!-- UUID로 계정 조회 -->
     <select id="selectAccountByUuid" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, last_login, created_at, updated_at
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at
         FROM accounts WHERE account_id = #{uuid}
     </select>
 
     <!-- 닉네임으로 계정 조회 -->
     <select id="selectAccountByNick" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, last_login, created_at, updated_at
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at
         FROM accounts WHERE nick = #{nick}
     </select>
 
     <!-- Google ID로 계정 조회 -->
     <select id="selectAccountByGoogleId" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, last_login, created_at, updated_at
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at
         FROM accounts WHERE google_id = #{googleId}
     </select>
 

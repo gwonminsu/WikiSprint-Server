@@ -22,6 +22,9 @@ public class AccountVO {
     @JsonProperty("profile_img_url")
     private String profileImgUrl;
 
+    @JsonProperty("is_admin")
+    private Boolean isAdmin;
+
     private LocalDateTime lastLogin;
 
     private LocalDateTime createdAt;
