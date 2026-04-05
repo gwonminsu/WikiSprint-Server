@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wikisprint.server.mapper.GameRecordMapper">
+
+    <resultMap id="GameRecordResultMap" type="GameRecordVO">
+        <id     property="recordId"    column="record_id"    />
+        <result property="accountId"   column="account_id"   />
+        <result property="targetWord"  column="target_word"  />
+        <result property="startDoc"    column="start_doc"    />
+        <result property="navPath"     column="nav_path"     />
+        <result property="elapsedMs"   column="elapsed_ms"   />
+        <result property="status"      column="status"       />
+        <result property="lastArticle" column="last_article" />
+        <result property="playedAt"    column="played_at"    />
+        <result property="createdAt"   column="created_at"   />
+    </resultMap>
+
+    <!-- 전적 생성 (in_progress 상태로 시작) -->
+    <insert id="insertRecord" parameterType="GameRecordVO">
+        INSERT INTO game_records (record_id, account_id, target_word, start_doc, nav_path, status, last_article, played_at)
+        VALUES (#{recordId}, #{accountId}, #{targetWord}, #{startDoc}, #{navPath}, 'in_progress', #{lastArticle}, #{playedAt})
+    </insert>
+
+    <!-- 경로 및 마지막 문서 업데이트 (in_progress 상태에서만 적용) -->
+    <update id="updateNavPath">
+        UPDATE game_records
+        SET nav_path = #{navPath}, last_article = #{lastArticle}
+        WHERE record_id = #{recordId}
+          AND account_id = #{accountId}
+          AND status = 'in_progress'
+    </update>
+
+    <!-- 게임 클리어 처리 -->
+    <update id="completeRecord">
+        UPDATE game_records
+        SET status = 'cleared', nav_path = #{navPath}, elapsed_ms = #{elapsedMs}, last_article = NULL
+        WHERE record_id = #{recordId}
+          AND account_id = #{accountId}
+          AND status = 'in_progress'
+    </update>
+
+    <!-- 게임 포기 처리 -->
+    <update id="abandonRecord">
+        UPDATE game_records
+        SET status = 'abandoned', last_article = NULL
+        WHERE record_id = #{recordId}
+          AND account_id = #{accountId}
+          AND status = 'in_progress'
+    </update>
+
+    <!-- 계정의 현재 in_progress 전적 조회 (최대 1건) -->
+    <select id="selectInProgressRecord" resultMap="GameRecordResultMap">
+        SELECT * FROM game_records
+        WHERE account_id = #{accountId}
+          AND status = 'in_progress'
+        ORDER BY played_at DESC
+        LIMIT 1
+    </select>
+
+    <!-- 계정별 최근 5개 완료 전적 조회 (cleared/abandoned, 최신순) -->
+    <select id="selectRecentRecords" resultMap="GameRecordResultMap">
+        SELECT * FROM game_records
+        WHERE account_id = #{accountId}
+          AND status IN ('cleared', 'abandoned')
+        ORDER BY played_at DESC
+        LIMIT 5
+    </select>
+
+    <!-- 계정별 가장 오래된 터미널 전적 삭제 (keepCount 초과분) -->
+    <delete id="deleteOldestRecords">
+        DELETE FROM game_records
+        WHERE record_id IN (
+            SELECT record_id FROM game_records
+            WHERE account_id = #{accountId}
+              AND status IN ('cleared', 'abandoned')
+            ORDER BY played_at DESC
+            OFFSET #{keepCount}
+        )
+    </delete>
+
+    <!-- stale in_progress 전적을 abandoned로 일괄 전환 -->
+    <update id="abandonStaleRecords">
+        UPDATE game_records
+        SET status = 'abandoned', last_article = NULL
+        WHERE account_id = #{accountId}
+          AND status = 'in_progress'
+          AND played_at &lt; NOW() - (#{thresholdMinutes} || ' minutes')::INTERVAL
+    </update>
+
+</mapper>

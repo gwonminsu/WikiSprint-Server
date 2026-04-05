@@ -1,3 +1,23 @@
+## v1.4.0 (2026-04-06)
+
+### Added
+- `GameRecordController` — 전적 라이프사이클 엔드포인트 5개 (`/record/start`, `/record/update-path`, `/record/complete`, `/record/abandon`, `/record/list`)
+- `GameRecordService` — 전적 생성 시 기존 `in_progress` 자동 포기, FIFO(최대 5건), stale 정리(60분), 누적 통계 증가 처리
+- `GameRecordMapper` (Java + XML) — 전적 CRUD 7개 메서드 (`insertRecord`, `updateNavPath`, `completeRecord`, `abandonRecord`, `selectInProgressRecord`, `selectRecentRecords`, `deleteOldestRecords`, `abandonStaleRecords`)
+- `GameRecordVO` — `status` (`in_progress`/`cleared`/`abandoned`), `lastArticle`, nullable `elapsedMs` 필드
+- `game_records` 테이블 — `status` 3-state, `last_article`, `elapsed_ms` nullable, `CHECK` 제약조건 포함 신규 생성
+- `accounts` 테이블에 누적 통계 컬럼 추가 — `total_games`, `total_clears`, `total_abandons` INTEGER DEFAULT 0
+- `AccountMapper` / `AccountMapper.xml` — `incrementTotalGames`, `incrementTotalClears`, `incrementTotalAbandons` 메서드 추가, 전체 SELECT에 통계 컬럼 포함
+- `AccountVO` — `totalGames`, `totalClears`, `totalAbandons` 필드 추가
+
+### Changed
+- `/record/list` 응답 summary — accounts 누적 통계 기반(`totalPlays`, `clearCount`, `giveUpCount`), bestTimeMs는 최근 5건 cleared에서 계산
+- `/record/list` 호출 시 stale `in_progress` 자동 abandoned 전환 (`cleanupStaleRecords`)
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.3.0 (2026-04-02)
 
 ### Added
