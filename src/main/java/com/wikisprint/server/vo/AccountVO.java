@@ -30,4 +30,9 @@ public class AccountVO {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    // 누적 통계
+    private Integer totalGames;
+    private Integer totalClears;
+    private Integer totalAbandons;
 }

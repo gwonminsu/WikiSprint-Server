@@ -43,7 +43,7 @@ public class JwtTokenProvider {
         String accessToken = Jwts.builder()
                 .setSubject(authentication.getName())
                 .claim("auth", authorities)
-                .setExpiration(new Date(now + 30000)) // 30초
+                .setExpiration(new Date(now + 1800000)) // 30분
                 .signWith(accessKey, SignatureAlgorithm.HS256)
                 .compact();
 

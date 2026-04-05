@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS accounts (
 
 -- 기존 DB 마이그레이션용 (이미 테이블이 존재하는 경우)
 ALTER TABLE IF EXISTS accounts ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_games    INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_clears   INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_abandons INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_accounts_google_id ON accounts(google_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
@@ -48,3 +51,21 @@ INSERT INTO target_words (word, difficulty, lang) VALUES
     ('バットマン', 2, 'ja'),
     ('換気扇', 3, 'ja')
 ON CONFLICT (word, lang) DO NOTHING;
+
+-- 게임 전적 테이블 초기화 (DROP 후 재생성)
+DROP TABLE IF EXISTS game_records;
+CREATE TABLE game_records (
+    record_id    VARCHAR(50)   NOT NULL PRIMARY KEY,             -- REC-{UUID}
+    account_id   VARCHAR(50)   NOT NULL REFERENCES accounts(account_id),
+    target_word  VARCHAR(100)  NOT NULL,                         -- 제시어
+    start_doc    VARCHAR(300)  NOT NULL,                         -- 시작 문서 제목
+    nav_path     TEXT          NOT NULL,                         -- JSON 배열 문자열 (방문 경로)
+    elapsed_ms   BIGINT,                                         -- 경과 시간 (밀리초, 클리어 시에만 설정)
+    status       VARCHAR(20)   NOT NULL DEFAULT 'in_progress',  -- in_progress | cleared | abandoned
+    last_article VARCHAR(300),                                   -- 마지막 도달 문서 (in_progress 추적용)
+    played_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_status CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
+);
+
+CREATE INDEX idx_game_records_account ON game_records(account_id, played_at DESC);

@@ -28,19 +28,19 @@
 
     <!-- UUID로 계정 조회 -->
     <select id="selectAccountByUuid" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons
         FROM accounts WHERE account_id = #{uuid}
     </select>
 
     <!-- 닉네임으로 계정 조회 -->
     <select id="selectAccountByNick" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons
         FROM accounts WHERE nick = #{nick}
     </select>
 
     <!-- Google ID로 계정 조회 -->
     <select id="selectAccountByGoogleId" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons
         FROM accounts WHERE google_id = #{googleId}
     </select>
 
@@ -56,6 +56,19 @@
         UPDATE accounts
         SET profile_img_url = #{profileImgUrl}, updated_at = now()
         WHERE account_id = #{uuid}
+    </update>
+
+    <!-- 누적 통계 증가 -->
+    <update id="incrementTotalGames" parameterType="string">
+        UPDATE accounts SET total_games = total_games + 1 WHERE account_id = #{uuid}
+    </update>
+
+    <update id="incrementTotalClears" parameterType="string">
+        UPDATE accounts SET total_clears = total_clears + 1 WHERE account_id = #{uuid}
+    </update>
+
+    <update id="incrementTotalAbandons" parameterType="string">
+        UPDATE accounts SET total_abandons = total_abandons + 1 WHERE account_id = #{uuid}
     </update>
 
 </mapper>

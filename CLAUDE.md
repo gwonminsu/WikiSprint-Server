@@ -43,10 +43,10 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 **패키지 구조:**
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController, WikiController, AdminController
-├── service/             # AuthService, AccountService, WikipediaService
-├── mapper/              # AccountMapper, TargetWordMapper (MyBatis DAO)
-├── vo/                  # AccountVO, TargetWordVO
+├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController
+├── service/             # AuthService, AccountService, WikipediaService, GameRecordService
+├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO, GameRecordVO
 ├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
@@ -58,7 +58,7 @@ com.wikisprint.server/
 
 **MyBatis Mapper XML 위치:**
 - `src/main/resources/mapper/user/` — AccountMapper
-- `src/main/resources/mapper/game/` — TargetWordMapper
+- `src/main/resources/mapper/game/` — TargetWordMapper, GameRecordMapper
 
 ## 핵심 시스템
 
@@ -83,6 +83,7 @@ POST /auth/google (credential: Google ID Token)
   - `nick` VARCHAR(50)
   - `profile_img_url` VARCHAR(500)
   - `is_admin` BOOLEAN NOT NULL DEFAULT FALSE
+  - `total_games`, `total_clears`, `total_abandons` INTEGER NOT NULL DEFAULT 0 (누적 통계)
   - `last_login`, `created_at`, `updated_at`
 - 테이블: `target_words` (제시어)
   - `word_id` SERIAL PK
@@ -91,6 +92,17 @@ POST /auth/google (credential: Google ID Token)
   - `lang` VARCHAR(5) (ko, en, ja)
   - `created_at` TIMESTAMP
   - UNIQUE(word, lang)
+- 테이블: `game_records` (게임 전적)
+  - `record_id` VARCHAR(50) PK
+  - `account_id` VARCHAR(50) FK → accounts
+  - `target_word` VARCHAR(100)
+  - `start_doc` VARCHAR(300)
+  - `nav_path` TEXT (JSON 배열 문자열)
+  - `elapsed_ms` BIGINT (nullable — cleared 시에만 설정)
+  - `status` VARCHAR(20) — `in_progress` | `cleared` | `abandoned`
+  - `last_article` VARCHAR(300) (in_progress 추적용)
+  - `played_at`, `created_at` TIMESTAMP
+  - CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
 
 ### 보안 설정
 
@@ -106,6 +118,20 @@ POST /auth/google (credential: Google ID Token)
 | `POST /admin/words/list` | 전체 제시어 목록 조회 | JWT + is_admin |
 | `POST /admin/words/add` | 제시어 추가 (body: `{ word, difficulty, lang }`) | JWT + is_admin |
 | `POST /admin/words/delete` | 제시어 삭제 (body: `{ wordId }`) | JWT + is_admin |
+
+### 게임 전적 API (`/api/record/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /record/start` | 전적 생성 (in_progress), body: `{ targetWord, startDoc }` | JWT |
+| `POST /record/update-path` | 경로 갱신, body: `{ recordId, navPath, lastArticle }` | JWT |
+| `POST /record/complete` | 클리어 처리, body: `{ recordId, navPath, elapsedMs }` | JWT |
+| `POST /record/abandon` | 포기 처리, body: `{ recordId }` | JWT |
+| `POST /record/list` | 전적 목록 + 누적 통계 조회 (stale 자동 정리 포함) | JWT |
+
+**전적 라이프사이클:** `in_progress` → `cleared` or `abandoned`  
+**FIFO 정책:** 계정당 터미널 전적(cleared/abandoned) 최대 5건 유지  
+**stale 정리:** `/record/list` 호출 시 60분 경과 `in_progress` 자동 `abandoned` 전환
 
 ## 외부 의존성
 
