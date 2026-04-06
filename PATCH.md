@@ -1,3 +1,20 @@
+## v1.5.0 (2026-04-06)
+
+### Added
+- `WikipediaService` — `ConcurrentHashMap` 기반 인메모리 문서 캐싱 추가 (TTL 1시간, `@Scheduled` 만료 엔트리 일괄 정리)
+  - `getArticleHtml()` / `getArticleSummary()` 캐시 키: `lang:title`
+  - `getRandomSummary()`는 캐싱 제외 (랜덤 특성상 무의미)
+- `WikipediaService` — 지수 백오프 Retry 로직 추가 (`executeWithRetry`)
+  - 429 Rate Limit 또는 네트워크/타임아웃 오류 시 최대 3회 재시도: 1초 → 2초 → 4초
+  - 외부 라이브러리 미사용 (직접 구현)
+
+### Notes
+- Wikimedia API Usage Guidelines 준수: User-Agent 헤더 기존 설정 유지 (`WikiSprint/1.0 (https://github.com/wikisprint; contact@wikisprint.com) RestTemplate`)
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.4.0 (2026-04-06)
 
 ### Added
