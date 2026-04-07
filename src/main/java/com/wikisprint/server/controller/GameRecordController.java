@@ -192,13 +192,8 @@ public class GameRecordController {
         int totalClears   = account != null && account.getTotalClears()   != null ? account.getTotalClears()   : 0;
         int totalAbandons = account != null && account.getTotalAbandons() != null ? account.getTotalAbandons() : 0;
 
-        // 최고 기록은 최근 5건 cleared 전적에서 계산
-        Long bestTimeMs = records.stream()
-                .filter(r -> "cleared".equals(r.getStatus()))
-                .map(GameRecordVO::getElapsedMs)
-                .filter(ms -> ms != null)
-                .min(Long::compareTo)
-                .orElse(null);
+        // 최고 기록은 accounts 테이블의 best_record 사용 (FIFO 삭제와 무관하게 전체 기록 보존)
+        Long bestTimeMs = account != null ? account.getBestRecord() : null;
 
         // records를 Map 리스트로 변환
         List<Map<String, Object>> recordList = new ArrayList<>();

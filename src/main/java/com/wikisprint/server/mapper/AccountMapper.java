@@ -21,4 +21,7 @@ public interface AccountMapper {
     void incrementTotalGames(@Param("uuid") String uuid);
     void incrementTotalClears(@Param("uuid") String uuid);
     void incrementTotalAbandons(@Param("uuid") String uuid);
+
+    // 최고 기록 갱신 (현재 기록이 기존보다 짧을 때만 적용)
+    void updateBestRecord(@Param("uuid") String uuid, @Param("elapsedMs") Long elapsedMs);
 }

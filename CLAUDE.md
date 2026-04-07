@@ -84,6 +84,7 @@ POST /auth/google (credential: Google ID Token)
   - `profile_img_url` VARCHAR(500)
   - `is_admin` BOOLEAN NOT NULL DEFAULT FALSE
   - `total_games`, `total_clears`, `total_abandons` INTEGER NOT NULL DEFAULT 0 (누적 통계)
+  - `best_record` BIGINT DEFAULT NULL (전체 클리어 기록 중 최단 시간, ms. null = 클리어 기록 없음)
   - `last_login`, `created_at`, `updated_at`
 - 테이블: `target_words` (제시어)
   - `word_id` SERIAL PK
@@ -138,9 +139,18 @@ POST /auth/google (credential: Google ID Token)
 - **PostgreSQL:** `127.0.0.1:5432/postgres` (스키마: wikisprint)
 - **Google OAuth:** `GOOGLE_CLIENT_ID` 환경변수로 설정
 
+### Wikipedia API (`/api/wiki/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `GET /wiki/random?lang=ko` | 랜덤 위키피디아 문서 요약 | 공개 |
+| `GET /wiki/page/html/{title}?lang=ko` | 문서 HTML | 공개 |
+| `GET /wiki/page/summary/{title}?lang=ko` | 문서 요약 | 공개 |
+| `GET /wiki/target/random?lang=ko[&difficulty=1]` | 랜덤 제시어 (difficulty 1~3 옵셔널, 미전달=오마카세) | 공개 |
+
 ## API 규칙
 
-- 모든 엔드포인트는 POST 메서드 사용
+- 모든 엔드포인트는 POST 메서드 사용 (GET 일부 예외: `/wiki/**`)
 - 요청/응답 본문은 JSON 형식
 - 인증: `Authorization: Bearer {access_token}` 헤더
 - 응답 래퍼: `ApiResponse<T>` (`{ data, message, auth }`)

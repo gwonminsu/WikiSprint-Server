@@ -1,3 +1,24 @@
+## v1.6.0 (2026-04-07)
+
+### Added
+- `accounts` 테이블 — `best_record BIGINT` 칼럼 추가 (클리어한 게임 중 최단 클리어 시간, ms 단위)
+  - 칼럼 추가 시 기존 `game_records` 에서 `MIN(elapsed_ms)` 마이그레이션 UPDATE 자동 적용
+- `AccountVO` — `bestRecord Long` 필드 추가
+- `AccountMapper` — `updateBestRecord(uuid, elapsedMs)` 메서드 추가
+- `AccountMapper.xml` — `updateBestRecord` 쿼리 추가 (SQL 레벨 원자적 비교: `best_record IS NULL OR best_record > #{elapsedMs}`)
+- `TargetWordMapper` — `selectRandomWordByDifficulty(lang, difficulty)` 메서드 추가
+- `TargetWordMapper.xml` — `selectRandomWordByDifficulty` 쿼리 추가 (언어 + 난이도 필터, `ORDER BY RANDOM() LIMIT 1`)
+- `WikiController` — `GET /wiki/target/random`에 `difficulty` 옵셔널 쿼리 파라미터 추가
+  - `difficulty` 1~3: 해당 난이도 필터링, 미전달: 기존 전체 풀 랜덤 (하위 호환)
+
+### Changed
+- `GameRecordService.completeRecord` — 클리어 시 `accountMapper.updateBestRecord()` 호출 추가 (포기 게임은 비교 대상 제외)
+- `GameRecordController./record/list` — `bestTimeMs` 계산 방식 변경: 최근 5건 스트림 MIN → `accounts.best_record` 직접 참조
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.5.0 (2026-04-06)
 
 ### Added

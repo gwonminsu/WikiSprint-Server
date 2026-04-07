@@ -35,4 +35,7 @@ public class AccountVO {
     private Integer totalGames;
     private Integer totalClears;
     private Integer totalAbandons;
+
+    // 최고 기록 (밀리초 단위, 클리어한 게임 중 최단 시간. null이면 클리어 기록 없음)
+    private Long bestRecord;
 }
