@@ -22,6 +22,17 @@ ALTER TABLE IF EXISTS accounts ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NUL
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_games    INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_clears   INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_abandons INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS best_record    BIGINT  DEFAULT NULL;
+
+-- 기존 클리어 기록에서 최고 기록 마이그레이션 (칼럼 추가 직후 한 번만 적용)
+UPDATE accounts a SET best_record = sub.min_ms
+FROM (
+    SELECT account_id, MIN(elapsed_ms) AS min_ms
+    FROM game_records
+    WHERE status = 'cleared' AND elapsed_ms IS NOT NULL
+    GROUP BY account_id
+) sub
+WHERE a.account_id = sub.account_id AND a.best_record IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_accounts_google_id ON accounts(google_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);

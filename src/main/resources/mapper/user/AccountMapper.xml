@@ -28,19 +28,19 @@
 
     <!-- UUID로 계정 조회 -->
     <select id="selectAccountByUuid" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
         FROM accounts WHERE account_id = #{uuid}
     </select>
 
     <!-- 닉네임으로 계정 조회 -->
     <select id="selectAccountByNick" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
         FROM accounts WHERE nick = #{nick}
     </select>
 
     <!-- Google ID로 계정 조회 -->
     <select id="selectAccountByGoogleId" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
         FROM accounts WHERE google_id = #{googleId}
     </select>
 
@@ -69,6 +69,14 @@
 
     <update id="incrementTotalAbandons" parameterType="string">
         UPDATE accounts SET total_abandons = total_abandons + 1 WHERE account_id = #{uuid}
+    </update>
+
+    <!-- 최고 기록 갱신 (현재 기록이 기존보다 짧을 때만 업데이트) -->
+    <update id="updateBestRecord">
+        UPDATE accounts
+        SET best_record = #{elapsedMs}, updated_at = now()
+        WHERE account_id = #{uuid}
+          AND (best_record IS NULL OR best_record > #{elapsedMs})
     </update>
 
 </mapper>

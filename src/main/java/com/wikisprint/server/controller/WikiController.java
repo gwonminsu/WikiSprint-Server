@@ -64,12 +64,21 @@ public class WikiController {
 
     /**
      * 랜덤 제시어 조회
-     * GET /api/wiki/target/random?lang=ko
+     * GET /api/wiki/target/random?lang=ko&difficulty=1 (difficulty: 1=쉬움, 2=보통, 3=어려움, 미전송=오마카세)
      */
     @GetMapping("/target/random")
-    public ResponseEntity<?> getRandomTargetWord(@RequestParam(defaultValue = "ko") String lang) {
+    public ResponseEntity<?> getRandomTargetWord(
+            @RequestParam(defaultValue = "ko") String lang,
+            @RequestParam(required = false) Short difficulty) {
         try {
-            TargetWordVO word = targetWordMapper.selectRandomWord(lang);
+            TargetWordVO word;
+            if (difficulty != null && difficulty >= 1 && difficulty <= 3) {
+                // 난이도 필터 적용 (쉬움/보통/어려움)
+                word = targetWordMapper.selectRandomWordByDifficulty(lang, difficulty);
+            } else {
+                // 오마카세: 전체 난이도에서 랜덤 선택
+                word = targetWordMapper.selectRandomWord(lang);
+            }
             if (word == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("등록된 제시어가 없습니다."));

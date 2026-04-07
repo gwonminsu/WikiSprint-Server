@@ -12,6 +12,9 @@ public interface TargetWordMapper {
     /** 랜덤 제시어 1개 조회 (언어 필터) */
     TargetWordVO selectRandomWord(@Param("lang") String lang);
 
+    /** 랜덤 제시어 1개 조회 (언어 + 난이도 필터) */
+    TargetWordVO selectRandomWordByDifficulty(@Param("lang") String lang, @Param("difficulty") Short difficulty);
+
     /** 전체 제시어 목록 조회 (admin 용도) */
     List<TargetWordVO> selectAllWords();
 

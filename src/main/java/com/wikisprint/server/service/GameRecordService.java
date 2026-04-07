@@ -77,6 +77,8 @@ public class GameRecordService {
     public void completeRecord(String accountId, String recordId, String navPath, Long elapsedMs) {
         gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
         accountMapper.incrementTotalClears(accountId);
+        // 최고 기록 갱신 (현재 클리어 시간이 기존 기록보다 짧으면 업데이트)
+        accountMapper.updateBestRecord(accountId, elapsedMs);
         gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
     }
 
