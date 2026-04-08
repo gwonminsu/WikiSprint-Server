@@ -43,10 +43,10 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 **패키지 구조:**
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController
-├── service/             # AuthService, AccountService, WikipediaService, GameRecordService
-├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper (MyBatis DAO)
-├── vo/                  # AccountVO, TargetWordVO, GameRecordVO
+├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController
+├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService
+├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO
 ├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
@@ -58,7 +58,7 @@ com.wikisprint.server/
 
 **MyBatis Mapper XML 위치:**
 - `src/main/resources/mapper/user/` — AccountMapper
-- `src/main/resources/mapper/game/` — TargetWordMapper, GameRecordMapper
+- `src/main/resources/mapper/game/` — TargetWordMapper, GameRecordMapper, RankingMapper
 
 ## 핵심 시스템
 
@@ -104,11 +104,24 @@ POST /auth/google (credential: Google ID Token)
   - `last_article` VARCHAR(300) (in_progress 추적용)
   - `played_at`, `created_at` TIMESTAMP
   - CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
+- 테이블: `ranking_records` (랭킹 기록)
+  - `id` SERIAL PK
+  - `account_id` VARCHAR(50) FK → accounts
+  - `period_type` VARCHAR(10) — `daily` | `weekly` | `monthly`
+  - `period_bucket` DATE — KST 기준 버킷 시작일 (일=오늘, 주=이번 주 월요일, 월=이번 달 1일)
+  - `difficulty` VARCHAR(10) — `all` | `easy` | `normal` | `hard`
+  - `elapsed_ms` BIGINT
+  - `target_word` VARCHAR(100)
+  - `start_doc` VARCHAR(300)
+  - `path_length` INTEGER
+  - `created_at` TIMESTAMP
+  - UNIQUE(period_type, period_bucket, difficulty, account_id)
+  - INDEX: idx_ranking_bucket_sort (period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC)
 
 ### 보안 설정
 
 - CORS 허용: `http://localhost:5969` (프론트엔드)
-- 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`
+- 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`
 - 보호된 엔드포인트: JWT Bearer 토큰 필요
 - 관리자 엔드포인트 (`/admin/**`): JWT 인증 + `AdminController.resolveAdmin()` DB 레벨 `is_admin` 이중 검증
 
@@ -138,6 +151,33 @@ POST /auth/google (credential: Google ID Token)
 
 - **PostgreSQL:** `127.0.0.1:5432/postgres` (스키마: wikisprint)
 - **Google OAuth:** `GOOGLE_CLIENT_ID` 환경변수로 설정
+
+### 랭킹 API (`/api/ranking/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /ranking/list` | 기간×난이도 Top 100 조회 (내 기록 포함) | 공개 (JWT 옵셔널) |
+
+**Request body:**
+```json
+{ "periodType": "daily|weekly|monthly", "difficulty": "all|easy|normal|hard" }
+```
+
+**Response data:**
+```json
+{ "top100": [...], "me": {...} | null, "bucketDate": "YYYY-MM-DD", "serverNow": "..." }
+```
+
+**버킷 정책 (KST 기준):**
+- `daily` → 오늘 날짜
+- `weekly` → 이번 주 월요일
+- `monthly` → 이번 달 1일
+
+**Top 100 유지 정책:**
+- 계정당 버킷(period_type × period_bucket × difficulty)별 1건만 유지
+- 더 좋은 기록(elapsed_ms 더 짧음)일 때만 갱신
+- 신규 삽입 시 100건 초과 시 최하위 기록 삭제
+- 게임 클리어마다 6개 버킷(3기간 × 난이도+all)에 자동 삽입
 
 ### Wikipedia API (`/api/wiki/**`)
 

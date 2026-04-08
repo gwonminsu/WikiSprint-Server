@@ -80,3 +80,27 @@ CREATE TABLE game_records (
 );
 
 CREATE INDEX idx_game_records_account ON game_records(account_id, played_at DESC);
+
+-- 랭킹 테이블 (Top 100 유지 구조)
+CREATE TABLE IF NOT EXISTS ranking_records (
+    id           SERIAL       PRIMARY KEY,
+    account_id   VARCHAR(50)  NOT NULL REFERENCES accounts(account_id),
+
+    period_type  VARCHAR(10)  NOT NULL,   -- daily | weekly | monthly
+    period_bucket DATE        NOT NULL,   -- 서버 KST 기준 버킷 시작일
+    difficulty   VARCHAR(10)  NOT NULL,   -- all | easy | normal | hard
+
+    elapsed_ms   BIGINT       NOT NULL,
+    target_word  VARCHAR(100) NOT NULL,
+    start_doc    VARCHAR(300) NOT NULL,
+    path_length  INTEGER      NOT NULL,
+
+    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_ranking_period CHECK (period_type IN ('daily','weekly','monthly')),
+    CONSTRAINT chk_ranking_diff   CHECK (difficulty IN ('all','easy','normal','hard')),
+    CONSTRAINT uq_ranking_bucket_user UNIQUE (period_type, period_bucket, difficulty, account_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ranking_bucket_sort
+    ON ranking_records(period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC);

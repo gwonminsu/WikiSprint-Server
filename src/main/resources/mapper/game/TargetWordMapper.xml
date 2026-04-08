@@ -49,4 +49,11 @@
         WHERE word_id = #{wordId}
     </delete>
 
+    <!-- 단어로 난이도 조회 (랭킹 분류용) -->
+    <select id="selectDifficultyByWord" resultType="Short">
+        SELECT difficulty FROM target_words
+        WHERE word = #{word}
+        LIMIT 1
+    </select>
+
 </mapper>

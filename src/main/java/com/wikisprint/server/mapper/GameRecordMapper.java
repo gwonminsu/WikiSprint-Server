@@ -52,4 +52,10 @@ public interface GameRecordMapper {
             @Param("accountId") String accountId,
             @Param("thresholdMinutes") int thresholdMinutes
     );
+
+    /** 전적 단건 조회 (랭킹 처리용 — target_word, start_doc 등 조회) */
+    GameRecordVO selectRecordById(
+            @Param("recordId") String recordId,
+            @Param("accountId") String accountId
+    );
 }
