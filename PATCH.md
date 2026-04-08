@@ -1,3 +1,31 @@
+## v1.7.0 (2026-04-08)
+
+### Added
+- `ranking_records` 테이블 신규 추가 (period_type × period_bucket × difficulty × account_id UNIQUE)
+  - `idx_ranking_bucket_sort` 인덱스 (period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC)
+- `RankingController` — `POST /ranking/list` 엔드포인트 (JWT 옵셔널 파싱, 비로그인 조회 가능)
+  - Response: `{ top100, me, bucketDate(KST), serverNow }`
+- `RankingService` — Top 100 유지 로직 구현
+  - 클리어마다 6개 버킷(3기간 × 난이도+all) 처리
+  - 기존 기록보다 좋을 때만 갱신, 100위 초과분 자동 정리
+  - 게임 클리어 트랜잭션과 분리(`@Transactional REQUIRES_NEW`)
+  - KST 기준 일(오늘)/주(이번 주 월요일)/월(이번 달 1일) 버킷 산출
+- `RankingMapper` + `RankingMapper.xml` — selectTop100/selectByUser/selectCount/selectWorstElapsedInTop100/insertRecord/updateRecord/deleteWorstBeyond100 (accounts JOIN 포함)
+- `RankingRecordVO` — 랭킹 기록 VO (nickname, profileImageUrl JOIN 포함)
+- `GameRecordMapper.selectRecordById` 추가 (랭킹 처리용 단건 조회)
+- `TargetWordMapper.selectDifficultyByWord` 추가 (단어로 난이도 코드 조회)
+
+### Changed
+- `SecurityConfig` — `/ranking/**`, `/api/ranking/**` permitAll 추가
+- `GameRecordService.completeRecord` — 클리어 후 `rankingService.tryInsertRanking()` 호출
+  - 난이도 코드 조회 + navPath JSON 파싱으로 경로 길이 산출
+  - 랭킹 처리 실패 시 warn 로그만 남기고 클리어 결과에 영향 없음
+- 서버 버전 1.6.0 → **1.7.0**
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.6.0 (2026-04-07)
 
 ### Added

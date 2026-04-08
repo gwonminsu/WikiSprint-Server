@@ -80,6 +80,14 @@
         )
     </delete>
 
+    <!-- 전적 단건 조회 (랭킹 처리용) -->
+    <select id="selectRecordById" resultMap="GameRecordResultMap">
+        SELECT * FROM game_records
+        WHERE record_id  = #{recordId}
+          AND account_id = #{accountId}
+        LIMIT 1
+    </select>
+
     <!-- stale in_progress 전적을 abandoned로 일괄 전환 -->
     <update id="abandonStaleRecords">
         UPDATE game_records

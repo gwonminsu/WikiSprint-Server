@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wikisprint.server.mapper.RankingMapper">
+
+    <resultMap id="RankingResultMap" type="RankingRecordVO">
+        <id     property="id"             column="id"               />
+        <result property="accountId"      column="account_id"       />
+        <result property="nickname"       column="nickname"         />
+        <result property="profileImageUrl" column="profile_image_url"/>
+        <result property="periodType"     column="period_type"      />
+        <result property="periodBucket"   column="period_bucket"    />
+        <result property="difficulty"     column="difficulty"       />
+        <result property="elapsedMs"      column="elapsed_ms"       />
+        <result property="targetWord"     column="target_word"      />
+        <result property="startDoc"       column="start_doc"        />
+        <result property="pathLength"     column="path_length"      />
+        <result property="createdAt"      column="created_at"       />
+    </resultMap>
+
+    <!-- Top 100 조회 — accounts JOIN으로 nickname, profile_image_url 포함 -->
+    <select id="selectTop100" resultMap="RankingResultMap">
+        SELECT r.id, r.account_id, a.nick AS nickname, a.profile_img_url AS profile_image_url,
+               r.period_type, r.period_bucket, r.difficulty,
+               r.elapsed_ms, r.target_word, r.start_doc, r.path_length, r.created_at
+        FROM ranking_records r
+        JOIN accounts a ON r.account_id = a.account_id
+        WHERE r.period_type  = #{periodType}
+          AND r.difficulty   = #{difficulty}
+          AND r.period_bucket = #{bucket}
+        ORDER BY r.elapsed_ms ASC, r.created_at ASC
+        LIMIT 100
+    </select>
+
+    <!-- 특정 유저 기록 조회 -->
+    <select id="selectByUser" resultMap="RankingResultMap">
+        SELECT r.id, r.account_id, a.nick AS nickname, a.profile_img_url AS profile_image_url,
+               r.period_type, r.period_bucket, r.difficulty,
+               r.elapsed_ms, r.target_word, r.start_doc, r.path_length, r.created_at
+        FROM ranking_records r
+        JOIN accounts a ON r.account_id = a.account_id
+        WHERE r.period_type   = #{periodType}
+          AND r.difficulty    = #{difficulty}
+          AND r.period_bucket = #{bucket}
+          AND r.account_id    = #{accountId}
+        LIMIT 1
+    </select>
+
+    <!-- 버킷 내 총 기록 수 -->
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(*) FROM ranking_records
+        WHERE period_type   = #{periodType}
+          AND difficulty    = #{difficulty}
+          AND period_bucket = #{bucket}
+    </select>
+
+    <!-- 현재 100위 elapsed_ms (100번째로 느린 기록) -->
+    <select id="selectWorstElapsedInTop100" resultType="Long">
+        SELECT elapsed_ms FROM ranking_records
+        WHERE period_type   = #{periodType}
+          AND difficulty    = #{difficulty}
+          AND period_bucket = #{bucket}
+        ORDER BY elapsed_ms ASC, created_at ASC
+        LIMIT 1 OFFSET 99
+    </select>
+
+    <!-- 신규 삽입 -->
+    <insert id="insertRecord" parameterType="RankingRecordVO">
+        INSERT INTO ranking_records
+            (account_id, period_type, period_bucket, difficulty, elapsed_ms, target_word, start_doc, path_length)
+        VALUES
+            (#{accountId}, #{periodType}, #{periodBucket}, #{difficulty},
+             #{elapsedMs}, #{targetWord}, #{startDoc}, #{pathLength})
+    </insert>
+
+    <!-- 기존 기록 갱신 (elapsed_ms, target_word, start_doc, path_length, created_at) -->
+    <update id="updateRecord" parameterType="RankingRecordVO">
+        UPDATE ranking_records
+        SET elapsed_ms   = #{elapsedMs},
+            target_word  = #{targetWord},
+            start_doc    = #{startDoc},
+            path_length  = #{pathLength},
+            created_at   = CURRENT_TIMESTAMP
+        WHERE period_type   = #{periodType}
+          AND period_bucket = #{periodBucket}
+          AND difficulty    = #{difficulty}
+          AND account_id    = #{accountId}
+    </update>
+
+    <!-- 100위 밖 기록 삭제 -->
+    <delete id="deleteWorstBeyond100">
+        DELETE FROM ranking_records
+        WHERE id IN (
+            SELECT id FROM ranking_records
+            WHERE period_type   = #{periodType}
+              AND difficulty    = #{difficulty}
+              AND period_bucket = #{bucket}
+            ORDER BY elapsed_ms ASC, created_at ASC
+            OFFSET 100
+        )
+    </delete>
+
+</mapper>

@@ -23,4 +23,7 @@ public interface TargetWordMapper {
 
     /** 제시어 삭제 (admin 용도) */
     void deleteWord(@Param("wordId") Integer wordId);
+
+    /** 단어로 난이도 조회 (랭킹 분류용 — 동일 단어가 여러 언어에 있으면 첫 번째 반환) */
+    Short selectDifficultyByWord(@Param("word") String word);
 }
