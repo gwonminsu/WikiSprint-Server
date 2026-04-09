@@ -55,6 +55,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.addAllowedOrigin("http://localhost:5969");
         configuration.addAllowedOrigin("http://13.209.255.179:5969");
+        configuration.addAllowedOrigin("https://main.d11crzf9vrq2hy.amplifyapp.com");
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
         configuration.setAllowCredentials(true);
