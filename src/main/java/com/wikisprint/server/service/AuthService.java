@@ -52,6 +52,7 @@ public class AuthService {
         String email = payload.getEmail();
         String name = (String) payload.get("name");
         String picture = (String) payload.get("picture");
+        String nationality = (String) payload.get("nationality");
 
         // 기존 계정 조회
         AccountVO account = accountMapper.selectAccountByGoogleId(googleId);
@@ -67,6 +68,7 @@ public class AuthService {
             account.setEmail(email);
             account.setNick(nick);
             account.setProfileImgUrl(picture);
+            account.setNationality(nationality);
             accountMapper.insertAccount(account);
             log.info("AUTO REGISTER SUCCESS google_id: {}, email: {}", googleId, email);
         }
@@ -90,6 +92,7 @@ public class AuthService {
                 "email", account.getEmail(),
                 "profile_img_url", account.getProfileImgUrl() != null ? account.getProfileImgUrl() : "",
                 "is_admin", Boolean.TRUE.equals(account.getIsAdmin()),
+                "nationality", account.getNationality(),
                 "token", token
         );
     }
