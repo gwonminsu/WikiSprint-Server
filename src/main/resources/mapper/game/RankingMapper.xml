@@ -9,6 +9,7 @@
         <result property="accountId"      column="account_id"       />
         <result property="nickname"       column="nickname"         />
         <result property="profileImageUrl" column="profile_image_url"/>
+        <result property="nationality"    column="nationality"      />
         <result property="periodType"     column="period_type"      />
         <result property="periodBucket"   column="period_bucket"    />
         <result property="difficulty"     column="difficulty"       />
@@ -19,9 +20,9 @@
         <result property="createdAt"      column="created_at"       />
     </resultMap>
 
-    <!-- Top 100 조회 — accounts JOIN으로 nickname, profile_image_url 포함 -->
+    <!-- Top 100 조회 — accounts JOIN으로 nickname, profile_image_url, nationality 포함 -->
     <select id="selectTop100" resultMap="RankingResultMap">
-        SELECT r.id, r.account_id, a.nick AS nickname, a.profile_img_url AS profile_image_url,
+        SELECT r.id, r.account_id, a.nick AS nickname, a.profile_img_url AS profile_image_url, a.nationality,
                r.period_type, r.period_bucket, r.difficulty,
                r.elapsed_ms, r.target_word, r.start_doc, r.path_length, r.created_at
         FROM ranking_records r
@@ -35,7 +36,7 @@
 
     <!-- 특정 유저 기록 조회 -->
     <select id="selectByUser" resultMap="RankingResultMap">
-        SELECT r.id, r.account_id, a.nick AS nickname, a.profile_img_url AS profile_image_url,
+        SELECT r.id, r.account_id, a.nick AS nickname, a.profile_img_url AS profile_image_url, a.nationality,
                r.period_type, r.period_bucket, r.difficulty,
                r.elapsed_ms, r.target_word, r.start_doc, r.path_length, r.created_at
         FROM ranking_records r

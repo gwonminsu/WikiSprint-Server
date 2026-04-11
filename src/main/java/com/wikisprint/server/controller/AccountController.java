@@ -59,6 +59,7 @@ public class AccountController {
         data.put("email", accountVO.getEmail());
         data.put("profile_img_url", accountVO.getProfileImgUrl());
         data.put("is_admin", Boolean.TRUE.equals(accountVO.getIsAdmin()));
+        data.put("nationality", accountVO.getNationality());
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
@@ -80,6 +81,7 @@ public class AccountController {
         data.put("email", accountVO.getEmail());
         data.put("profile_img_url", accountVO.getProfileImgUrl());
         data.put("is_admin", Boolean.TRUE.equals(accountVO.getIsAdmin()));
+        data.put("nationality", accountVO.getNationality());
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
@@ -116,6 +118,44 @@ public class AccountController {
             Map<String, Object> data = new HashMap<>();
             data.put("nick", newNick);
             return ResponseEntity.ok(ApiResponse.success(data, "닉네임 변경 완료"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * 국적 변경
+     */
+    @PostMapping("/nationality/update")
+    public ResponseEntity<?> updateNationality(
+            @RequestHeader(value = "Authorization", required = false) String accessToken,
+            @RequestBody Map<String, String> request) {
+
+        // nationality가 없거나 빈 문자열이면 null로 처리 (무국적)
+        String nationality = request.get("nationality");
+        if (nationality != null && nationality.isBlank()) {
+            nationality = null;
+        }
+
+        Authentication auth;
+        try {
+            auth = jwtTokenProvider.getAuthentication(accessToken, false);
+        } catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("ACCESS_TOKEN_EXPIRED"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("유효하지 않은 엑세스 토큰입니다."));
+        }
+
+        AccountVO accountVO = authService.getAccountByUuid(auth.getName());
+        if (accountVO == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("계정을 찾을 수 없습니다."));
+        }
+
+        try {
+            accountService.updateNationality(accountVO.getUuid(), nationality);
+            Map<String, Object> data = new HashMap<>();
+            data.put("nationality", nationality);
+            return ResponseEntity.ok(ApiResponse.success(data, "국적 변경 완료"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
         }

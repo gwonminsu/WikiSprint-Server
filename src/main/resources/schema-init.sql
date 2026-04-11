@@ -23,6 +23,7 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_games    INTEGER NOT NULL DE
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_clears   INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_abandons INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS best_record    BIGINT  DEFAULT NULL;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS nationality   VARCHAR(2) DEFAULT NULL;
 
 -- 기존 클리어 기록에서 최고 기록 마이그레이션 (칼럼 추가 직후 한 번만 적용)
 UPDATE accounts a SET best_record = sub.min_ms

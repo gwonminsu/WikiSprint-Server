@@ -28,19 +28,19 @@
 
     <!-- UUID로 계정 조회 -->
     <select id="selectAccountByUuid" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
         FROM accounts WHERE account_id = #{uuid}
     </select>
 
     <!-- 닉네임으로 계정 조회 -->
     <select id="selectAccountByNick" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
         FROM accounts WHERE nick = #{nick}
     </select>
 
     <!-- Google ID로 계정 조회 -->
     <select id="selectAccountByGoogleId" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
         FROM accounts WHERE google_id = #{googleId}
     </select>
 
@@ -55,6 +55,13 @@
     <update id="updateProfileImgUrl">
         UPDATE accounts
         SET profile_img_url = #{profileImgUrl}, updated_at = now()
+        WHERE account_id = #{uuid}
+    </update>
+
+    <!-- 국적 변경 (null = 무국적) -->
+    <update id="updateNationality">
+        UPDATE accounts
+        SET nationality = #{nationality}, updated_at = now()
         WHERE account_id = #{uuid}
     </update>
 

@@ -22,6 +22,9 @@ public class AccountVO {
     @JsonProperty("profile_img_url")
     private String profileImgUrl;
 
+    // ISO 3166-1 alpha-2 국가 코드 (예: "KR", null = 무국적)
+    private String nationality;
+
     @JsonProperty("is_admin")
     private Boolean isAdmin;
 
