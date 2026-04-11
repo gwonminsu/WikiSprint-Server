@@ -1,3 +1,26 @@
+## v1.8.0 (2026-04-12)
+
+### Added
+- `accounts` 테이블에 `nationality VARCHAR(2) DEFAULT NULL` 칼럼 추가 (ISO 3166-1 alpha-2, null = 무국적)
+  - `schema-init.sql` — `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS nationality ...` 마이그레이션 추가
+- `POST /account/nationality/update` 엔드포인트 신규
+  - 요청: `{ nationality: "KR" | null }` / JWT 인증 필수
+  - 빈 문자열은 null로 자동 정규화, 2자리 코드 검증
+- `AccountService.updateNationality()` 메서드 추가
+- `AccountMapper.updateNationality()` + XML `<update>` 쿼리 추가
+- `RankingRecordVO` — `nationality` 필드 추가 (accounts JOIN)
+
+### Changed
+- `AccountController.getMyAccount()`, `getAccount()` 응답에 `nationality` 필드 포함
+- `AccountMapper.xml` — 3개 SELECT 쿼리에 `nationality` 칼럼 추가
+- `RankingMapper.xml` — resultMap + `selectTop100` / `selectByUser` 쿼리에 `a.nationality` 추가
+- `RankingController.rankingRecordToMap()` — `nationality` 필드 직렬화 추가
+- 서버 버전 1.7.0 → **1.8.0**
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.7.0 (2026-04-08)
 
 ### Added

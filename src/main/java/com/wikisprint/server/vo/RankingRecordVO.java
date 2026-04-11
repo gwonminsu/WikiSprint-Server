@@ -14,6 +14,7 @@ public class RankingRecordVO {
     private String accountId;     // FK → accounts.account_id
     private String nickname;      // JOIN: accounts.nick
     private String profileImageUrl; // JOIN: accounts.profile_img_url
+    private String nationality;   // JOIN: accounts.nationality (ISO 3166-1 alpha-2, null = 무국적)
 
     private String periodType;    // daily | weekly | monthly
     private LocalDate periodBucket; // 기간 시작일 (KST 기준)

@@ -16,6 +16,7 @@ public interface AccountMapper {
 
     void updateNick(@Param("uuid") String uuid, @Param("nick") String nick);
     void updateProfileImgUrl(@Param("uuid") String uuid, @Param("profileImgUrl") String profileImgUrl);
+    void updateNationality(@Param("uuid") String uuid, @Param("nationality") String nationality);
 
     // 누적 통계 증가
     void incrementTotalGames(@Param("uuid") String uuid);

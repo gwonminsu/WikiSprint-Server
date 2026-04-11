@@ -95,6 +95,7 @@ public class RankingController {
         m.put("accountId",       r.getAccountId());
         m.put("nickname",        r.getNickname());
         m.put("profileImageUrl", r.getProfileImageUrl());
+        m.put("nationality",     r.getNationality());
         m.put("periodType",      r.getPeriodType());
         m.put("difficulty",      r.getDifficulty());
         m.put("elapsedMs",       r.getElapsedMs());

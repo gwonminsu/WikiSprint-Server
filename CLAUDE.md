@@ -82,6 +82,7 @@ POST /auth/google (credential: Google ID Token)
   - `email` VARCHAR(255)
   - `nick` VARCHAR(50)
   - `profile_img_url` VARCHAR(500)
+  - `nationality` VARCHAR(2) DEFAULT NULL (ISO 3166-1 alpha-2 국가 코드, null = 무국적)
   - `is_admin` BOOLEAN NOT NULL DEFAULT FALSE
   - `total_games`, `total_clears`, `total_abandons` INTEGER NOT NULL DEFAULT 0 (누적 통계)
   - `best_record` BIGINT DEFAULT NULL (전체 클리어 기록 중 최단 시간, ms. null = 클리어 기록 없음)

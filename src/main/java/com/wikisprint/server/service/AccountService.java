@@ -46,6 +46,23 @@ public class AccountService {
     }
 
     /**
+     * 국적 변경 (null 허용 — 무국적 복원)
+     */
+    @Transactional
+    public void updateNationality(String accountUuid, String nationality) {
+        AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
+        if (account == null) {
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
+        }
+        // null은 무국적, 값이 있으면 반드시 2자리 alpha-2 코드
+        if (nationality != null && nationality.length() != 2) {
+            throw new IllegalArgumentException("유효하지 않은 국적 코드입니다.");
+        }
+        accountMapper.updateNationality(accountUuid, nationality);
+        log.info("UPDATE account nationality: {} -> {}", account.getNationality(), nationality);
+    }
+
+    /**
      * 프로필 이미지 업로드/변경
      */
     @Transactional
