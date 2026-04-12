@@ -11,12 +11,19 @@ import com.wikisprint.server.vo.AccountVO;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -27,7 +34,14 @@ public class AuthService {
     private final AccountMapper accountMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final RestTemplate restTemplate;
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
+    @Value("${google.client-id}")
+    private String googleClientId;
+
+    @Value("${google.client-secret}")
+    private String googleClientSecret;
 
     /**
      * Google id_token 검증 후 로그인 또는 자동 가입 처리
@@ -128,6 +142,41 @@ public class AuthService {
 
         log.info("TOKEN REISSUE SUCCESS uuid: {}", uuid);
         return jwtTokenProvider.createAllToken(authToken);
+    }
+
+    /**
+     * iOS OAuth2 authorization code를 id_token으로 교환 후 로그인 처리
+     * Google 토큰 엔드포인트에 code를 전달하고 받은 id_token으로 기존 로그인 로직 재사용
+     */
+    @Transactional
+    public Map<String, Object> googleLoginWithCode(String code, String redirectUri) {
+        // Google 토큰 엔드포인트에 code 교환 요청
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("code", code);
+        body.add("client_id", googleClientId);
+        body.add("client_secret", googleClientSecret);
+        body.add("redirect_uri", redirectUri);
+        body.add("grant_type", "authorization_code");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> tokenResponse = restTemplate.postForObject(
+                "https://oauth2.googleapis.com/token",
+                request,
+                Map.class
+        );
+
+        if (tokenResponse == null || !tokenResponse.containsKey("id_token")) {
+            throw new UnauthorizedException("Google code 교환 실패: id_token이 없습니다.");
+        }
+
+        String idToken = (String) tokenResponse.get("id_token");
+        // 기존 id_token 검증 + 로그인 로직 재사용
+        return googleLogin(idToken);
     }
 
     public AccountVO getAccountByUuid(String uuid) {

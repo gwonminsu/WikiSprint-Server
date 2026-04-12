@@ -57,6 +57,48 @@ public class AuthController {
     }
 
     /**
+     * iOS OAuth2 code flow 로그인 (authorization code → id_token 교환)
+     * Google의 implicit flow 제한으로 iOS에서 response_type=code 사용 시 호출
+     */
+    @PostMapping("/google/code")
+    public ResponseEntity<?> googleLoginWithCode(@RequestBody Map<String, String> request) {
+        String code = request.get("code");
+        String redirectUri = request.get("redirectUri");
+
+        if (code == null || code.isBlank() || redirectUri == null || redirectUri.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("code 또는 redirectUri가 없습니다."));
+        }
+
+        try {
+            Map<String, Object> result = authService.googleLoginWithCode(code, redirectUri);
+            TokenDTO token = (TokenDTO) result.get("token");
+
+            Map<String, Object> data = Map.of(
+                    "uuid", result.get("uuid"),
+                    "nick", result.get("nick"),
+                    "email", result.get("email"),
+                    "profile_img_url", result.get("profile_img_url"),
+                    "is_admin", result.get("is_admin"),
+                    "nationality", result.get("nationality")
+            );
+
+            return ResponseEntity.ok(ApiResponse.withAuth(
+                    data,
+                    "Google 로그인 성공 (code flow)",
+                    token.getAccessToken(),
+                    token.getRefreshToken()
+            ));
+        } catch (UnauthorizedException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("로그인 처리 중 오류가 발생했습니다."));
+        }
+    }
+
+    /**
      * 만료된 accessToken 갱신
      */
     @PostMapping("/token/refresh")
