@@ -78,6 +78,11 @@
         UPDATE accounts SET total_abandons = total_abandons + 1 WHERE account_id = #{uuid}
     </update>
 
+    <!-- 벌크 포기 횟수 증가 (stale 정리용) -->
+    <update id="addTotalAbandons">
+        UPDATE accounts SET total_abandons = total_abandons + #{count} WHERE account_id = #{uuid}
+    </update>
+
     <!-- 최고 기록 갱신 (현재 기록이 기존보다 짧을 때만 업데이트) -->
     <update id="updateBestRecord">
         UPDATE accounts

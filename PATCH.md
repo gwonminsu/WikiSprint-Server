@@ -1,3 +1,32 @@
+## v1.9.0 (2026-04-12)
+
+### Added
+- `GlobalExceptionHandler` 신규 추가 (`@RestControllerAdvice` — 전역 예외 처리)
+  - `UnauthorizedException` → 401 UNAUTHORIZED
+  - `FileException` → 400 BAD_REQUEST
+  - `IllegalArgumentException` → 400 BAD_REQUEST
+  - `RuntimeException` → 500 (메시지 미노출, "서버 오류가 발생했습니다.")
+  - `Exception` → 500 (메시지 미노출)
+- `AccountMapper` — `addTotalAbandons(uuid, count)` 벌크 포기 횟수 증가 메서드 추가
+- `AccountMapper.xml` — `addTotalAbandons` 쿼리 추가 (`total_abandons + #{count}`)
+
+### Changed
+- `AccountController.getAccount()` — 공개 API에서 민감 정보 제거
+  - `email`, `is_admin` 필드 응답에서 제외 (민감 정보는 `/account/me`에서만 제공)
+- `AuthService.googleLogin()` — `Map.of()` → `HashMap` 전환 (null nationality NullPointerException 수정)
+- `AuthService.reissueToken()` — refresh token 재발급 시 DB 조회로 최신 권한 재구성
+  - refresh token에 auth claim이 없으므로 DB에서 is_admin 재확인 후 ROLE_ADMIN 부여
+- `JwtTokenProvider` — 미사용 `createAccessToken()`, `createRefreshToken()` 메서드 삭제
+- `GameRecordService.cleanupStaleRecords()` — N회 개별 UPDATE → 1회 벌크 UPDATE 최적화
+  - stale 처리 시 `incrementTotalAbandons` N번 호출 → `addTotalAbandons(count)` 1회 호출
+- `WikipediaService` — 캐시 최대 크기 500건 제한 (`putWithSizeLimit`, 메모리 누수 방지)
+  - HTML 캐시 / 요약 캐시 모두 적용, 초과 시 가장 오래된 엔트리 제거
+- 서버 버전 1.8.0 → **1.9.0**
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.8.0 (2026-04-12)
 
 ### Added

@@ -60,41 +60,6 @@ public class JwtTokenProvider {
                 .build();
     }
 
-    public TokenDTO createAccessToken(Authentication authentication) {
-        String authorities = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
-
-        long now = (new Date()).getTime();
-
-        String accessToken = Jwts.builder()
-                .setSubject(authentication.getName())
-                .claim("auth", authorities)
-                .setExpiration(new Date(now + 30000)) // 30초
-                .signWith(accessKey, SignatureAlgorithm.HS256)
-                .compact();
-
-        return TokenDTO.builder()
-                .grantType("Bearer")
-                .accessToken(accessToken)
-                .build();
-    }
-
-    public TokenDTO createRefreshToken(Authentication authentication) {
-        long now = (new Date()).getTime();
-
-        String refreshToken = Jwts.builder()
-                .setSubject(authentication.getName())
-                .setExpiration(new Date(now + 1209600000))
-                .signWith(refreshKey, SignatureAlgorithm.HS256)
-                .compact();
-
-        return TokenDTO.builder()
-                .grantType("Bearer")
-                .refreshToken(refreshToken)
-                .build();
-    }
-
     public Authentication getAuthentication(String token, boolean isRefresh) {
         // Bearer 접두사 제거
         String actualToken = resolveToken(token);

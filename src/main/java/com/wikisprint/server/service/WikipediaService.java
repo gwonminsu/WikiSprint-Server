@@ -34,6 +34,8 @@ public class WikipediaService {
 
     // 캐시 TTL: 1시간 (밀리초)
     private static final long CACHE_TTL_MS = 60 * 60 * 1000L;
+    // 캐시 최대 크기 — 초과 시 가장 오래된 엔트리 제거
+    private static final int MAX_CACHE_SIZE = 500;
 
     // 캐시 엔트리 (값 + 생성 시각)
     private record CacheEntry(Object value, long createdAt) {
@@ -100,6 +102,18 @@ public class WikipediaService {
         throw new RestClientException("최대 재시도 횟수 초과");
     }
 
+    /**
+     * 최대 크기를 초과할 경우 가장 오래된 엔트리를 제거하고 삽입
+     */
+    private void putWithSizeLimit(ConcurrentHashMap<String, CacheEntry> cache, String key, CacheEntry entry) {
+        if (cache.size() >= MAX_CACHE_SIZE) {
+            cache.entrySet().stream()
+                    .min(java.util.Comparator.comparingLong(e -> e.getValue().createdAt()))
+                    .ifPresent(e -> cache.remove(e.getKey()));
+        }
+        cache.put(key, entry);
+    }
+
     private void sleep(long ms) {
         try {
             Thread.sleep(ms);
@@ -156,7 +170,7 @@ public class WikipediaService {
             return response.getBody();
         });
 
-        htmlCache.put(cacheKey, new CacheEntry(html, System.currentTimeMillis()));
+        putWithSizeLimit(htmlCache, cacheKey, new CacheEntry(html, System.currentTimeMillis()));
         return html;
     }
 
@@ -181,7 +195,7 @@ public class WikipediaService {
             return (Map<String, Object>) response.getBody();
         });
 
-        summaryCache.put(cacheKey, new CacheEntry(summary, System.currentTimeMillis()));
+        putWithSizeLimit(summaryCache, cacheKey, new CacheEntry(summary, System.currentTimeMillis()));
         return summary;
     }
 }

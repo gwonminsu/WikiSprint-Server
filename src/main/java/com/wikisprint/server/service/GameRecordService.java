@@ -134,8 +134,9 @@ public class GameRecordService {
     @Transactional
     public void cleanupStaleRecords(String accountId) {
         int abandoned = gameRecordMapper.abandonStaleRecords(accountId, STALE_THRESHOLD_MINUTES);
-        for (int i = 0; i < abandoned; i++) {
-            accountMapper.incrementTotalAbandons(accountId);
+        if (abandoned > 0) {
+            // N번 개별 UPDATE 대신 한 번의 벌크 UPDATE로 처리
+            accountMapper.addTotalAbandons(accountId, abandoned);
         }
         if (abandoned > 0) {
             gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);

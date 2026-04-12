@@ -86,19 +86,21 @@ public class AuthService {
         accountMapper.updateLastLoginAt(account.getUuid());
         log.info("GOOGLE LOGIN SUCCESS uuid: {}", account.getUuid());
 
-        return Map.of(
-                "uuid", account.getUuid(),
-                "nick", account.getNick(),
-                "email", account.getEmail(),
-                "profile_img_url", account.getProfileImgUrl() != null ? account.getProfileImgUrl() : "",
-                "is_admin", Boolean.TRUE.equals(account.getIsAdmin()),
-                "nationality", account.getNationality(),
-                "token", token
-        );
+        // Map.of()는 null value를 허용하지 않으므로 HashMap 사용 (nationality가 null일 수 있음)
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("uuid", account.getUuid());
+        result.put("nick", account.getNick());
+        result.put("email", account.getEmail());
+        result.put("profile_img_url", account.getProfileImgUrl() != null ? account.getProfileImgUrl() : "");
+        result.put("is_admin", Boolean.TRUE.equals(account.getIsAdmin()));
+        result.put("nationality", account.getNationality());
+        result.put("token", token);
+        return result;
     }
 
     /**
      * refresh token으로 새 토큰 재발급
+     * refresh token에는 auth claim이 없으므로, DB에서 계정을 다시 조회하여 권한을 재구성한다.
      */
     public TokenDTO reissueToken(String refreshToken) {
         try {
@@ -108,8 +110,24 @@ public class AuthService {
         }
 
         Authentication auth = jwtTokenProvider.getAuthentication(refreshToken, true);
-        log.info("TOKEN REISSUE SUCCESS uuid: {}", auth.getName());
-        return jwtTokenProvider.createAllToken(auth);
+        String uuid = auth.getName();
+
+        // DB에서 계정을 다시 조회하여 최신 권한 재구성 (refresh token에는 auth claim 없음)
+        AccountVO account = accountMapper.selectAccountByUuid(uuid);
+        if (account == null) {
+            throw new UnauthorizedException("계정을 찾을 수 없습니다.");
+        }
+
+        List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        if (Boolean.TRUE.equals(account.getIsAdmin())) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(uuid, null, authorities);
+
+        log.info("TOKEN REISSUE SUCCESS uuid: {}", uuid);
+        return jwtTokenProvider.createAllToken(authToken);
     }
 
     public AccountVO getAccountByUuid(String uuid) {

@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.7.0-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.9.0-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -72,17 +72,18 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController, WikiController
-├── service/             # AuthService, AccountService, WikipediaService
-├── mapper/              # AccountMapper, TargetWordMapper (MyBatis DAO)
-├── vo/                  # AccountVO, TargetWordVO
+├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController
+├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService
+├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO
 ├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>, TokenDTO
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
     └── common/
         ├── auth/        # JwtTokenProvider, JwtAuthenticationFilter
         ├── status/      # 커스텀 예외 (FileException, UnauthorizedException)
-        └── util/        # FileStorageUtil
+        ├── util/        # FileStorageUtil
+        └── GlobalExceptionHandler
 ```
 
 ---
@@ -143,6 +144,12 @@ com.wikisprint.server/
 | `email` | VARCHAR(255) | 이메일 주소 |
 | `nick` | VARCHAR(50) | 닉네임 |
 | `profile_img_url` | VARCHAR(500) | 프로필 이미지 경로 |
+| `nationality` | VARCHAR(2) | ISO 3166-1 alpha-2 국가 코드 (null = 무국적) |
+| `is_admin` | BOOLEAN | 관리자 여부 (기본값 false) |
+| `total_games` | INTEGER | 총 게임 수 |
+| `total_clears` | INTEGER | 총 클리어 수 |
+| `total_abandons` | INTEGER | 총 포기 수 |
+| `best_record` | BIGINT | 최단 클리어 시간 ms (null = 기록 없음) |
 | `last_login` | TIMESTAMP | 최근 로그인 시각 |
 | `created_at` | TIMESTAMP | 계정 생성 시각 |
 | `updated_at` | TIMESTAMP | 마지막 수정 시각 |
@@ -152,8 +159,9 @@ com.wikisprint.server/
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | `word_id` | SERIAL PK | 제시어 ID |
-| `word` | VARCHAR(100) UNIQUE | 제시어 텍스트 |
+| `word` | VARCHAR(100) | 제시어 텍스트 |
 | `difficulty` | SMALLINT | 난이도 (1: 쉬움, 2: 보통, 3: 어려움) |
+| `lang` | VARCHAR(5) | 언어 코드 (ko, en, ja) |
 | `created_at` | TIMESTAMP | 등록 시각 |
 
 > 초기화 스크립트: [`src/main/resources/schema-init.sql`](./src/main/resources/schema-init.sql)
@@ -256,7 +264,7 @@ google:
 | 설정 | 내용 |
 |------|------|
 | CORS 허용 오리진 | `http://localhost:5969` |
-| 공개 엔드포인트 | `/auth/**`, `/error/**`, `/account/profile/image/**` |
+| 공개 엔드포인트 | `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**` |
 | 보호 엔드포인트 | JWT Bearer 토큰 필요 |
 | 인증 헤더 | `Authorization: Bearer {access_token}` |
 

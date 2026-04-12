@@ -64,7 +64,7 @@ public class AccountController {
     }
 
     /**
-     * 특정 계정 정보 조회
+     * 특정 계정 공개 정보 조회 (민감 필드 제외 — email, is_admin 미포함)
      */
     @PostMapping("/detail")
     public ResponseEntity<?> getAccount(@RequestBody Map<String, String> request) {
@@ -75,12 +75,11 @@ public class AccountController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("계정을 찾을 수 없습니다."));
         }
 
+        // 공개 필드만 반환 (이메일, 관리자 여부 등 민감 정보는 /account/me 에서만 제공)
         Map<String, Object> data = new HashMap<>();
         data.put("uuid", accountVO.getUuid());
         data.put("nick", accountVO.getNick());
-        data.put("email", accountVO.getEmail());
         data.put("profile_img_url", accountVO.getProfileImgUrl());
-        data.put("is_admin", Boolean.TRUE.equals(accountVO.getIsAdmin()));
         data.put("nationality", accountVO.getNationality());
         return ResponseEntity.ok(ApiResponse.success(data));
     }
