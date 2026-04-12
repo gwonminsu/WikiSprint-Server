@@ -53,7 +53,8 @@ com.wikisprint.server/
     └── common/
         ├── auth/        # JwtTokenProvider, JwtAuthenticationFilter
         ├── status/      # 커스텀 예외
-        └── util/        # FileStorageUtil
+        ├── util/        # FileStorageUtil
+        └── GlobalExceptionHandler
 ```
 
 **MyBatis Mapper XML 위치:**
@@ -208,7 +209,7 @@ POST /auth/google (credential: Google ID Token)
 2. git log/diff를 분석하여 변경 내용 파악
 3. PATCH.md 최상단에 새 버전 항목 추가
 4. 버전 사이 구분선: `=` 104개 × 3줄
-5. 패치노트 작성 후 Git 커밋 및 푸시
+5. 커밋 제안만 함 (커밋·푸시는 사용자가 직접 수행)
 
 **커밋 규칙:**
 - 제목: `feat: 대표 변경사항 (vX.X.X)`

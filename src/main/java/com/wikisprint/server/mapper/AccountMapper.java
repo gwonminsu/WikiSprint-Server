@@ -22,6 +22,8 @@ public interface AccountMapper {
     void incrementTotalGames(@Param("uuid") String uuid);
     void incrementTotalClears(@Param("uuid") String uuid);
     void incrementTotalAbandons(@Param("uuid") String uuid);
+    // 벌크 포기 횟수 증가 (stale 정리 시 N회 → 1회 UPDATE로 처리)
+    void addTotalAbandons(@Param("uuid") String uuid, @Param("count") int count);
 
     // 최고 기록 갱신 (현재 기록이 기존보다 짧을 때만 적용)
     void updateBestRecord(@Param("uuid") String uuid, @Param("elapsedMs") Long elapsedMs);
