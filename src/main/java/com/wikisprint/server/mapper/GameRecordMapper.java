@@ -58,4 +58,7 @@ public interface GameRecordMapper {
             @Param("recordId") String recordId,
             @Param("accountId") String accountId
     );
+
+    /** 공유용 전적 단건 조회 (accountId 불필요 — recordId만으로 검색) */
+    GameRecordVO selectRecordByRecordId(@Param("recordId") String recordId);
 }

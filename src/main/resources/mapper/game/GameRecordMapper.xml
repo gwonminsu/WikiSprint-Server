@@ -88,6 +88,13 @@
         LIMIT 1
     </select>
 
+    <!-- 공유용 전적 단건 조회 (recordId만으로 검색, status 검증은 서비스에서) -->
+    <select id="selectRecordByRecordId" resultMap="GameRecordResultMap">
+        SELECT * FROM game_records
+        WHERE record_id = #{recordId}
+        LIMIT 1
+    </select>
+
     <!-- stale in_progress 전적을 abandoned로 일괄 전환 -->
     <update id="abandonStaleRecords">
         UPDATE game_records
