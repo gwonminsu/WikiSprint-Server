@@ -1,3 +1,21 @@
+## v1.10.0 (2026-04-13)
+
+### Added
+- 공유용 전적 조회 API 추가 (`POST /record/share/{shareId}`)
+  - shareId = `record_id`에서 `REC-` prefix 제거한 UUID 문자열
+  - `cleared` 상태 전적만 응답, 그 외 404 반환
+  - 응답: `nick`, `profileImgUrl`, `targetWord`, `startDoc`, `navPath`, `elapsedMs` (내부 정보 제외)
+  - JWT 인증 불필요 — 비로그인 사용자도 접근 가능
+- `GameRecordMapper` — `selectRecordByRecordId(recordId)` 메서드 추가
+  - 기존 `selectRecordById`는 `accountId` 필수 → 공유 조회용 신규 메서드 분리
+- `GameRecordService` — `getSharedRecord(shareId)` 메서드 추가
+- `SecurityConfig` — `/record/share/**`, `/api/record/share/**` permitAll 추가
+- 서버 버전 1.9.0 → **1.10.0**
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.9.0 (2026-04-12)
 
 ### Added

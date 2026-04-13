@@ -162,6 +162,33 @@ public class GameRecordController {
     }
 
     /**
+     * 공유 링크용 전적 조회 — 공개 API (JWT 불필요)
+     * shareId = recordId에서 "REC-" prefix 제거한 UUID
+     * Response: { nick, profileImgUrl, targetWord, startDoc, navPath, elapsedMs }
+     */
+    @PostMapping("/share/{shareId}")
+    public ResponseEntity<?> getSharedRecord(@PathVariable String shareId) {
+        GameRecordVO record = gameRecordService.getSharedRecord(shareId);
+        if (record == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("공유 링크가 유효하지 않습니다."));
+        }
+
+        // 닉네임·프로필 이미지만 노출 (accountId 등 내부 정보 제외)
+        AccountVO account = accountMapper.selectAccountByUuid(record.getAccountId());
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("nick",          account != null ? account.getNick()           : "사용자");
+        data.put("profileImgUrl", account != null ? account.getProfileImgUrl()  : null);
+        data.put("targetWord",    record.getTargetWord());
+        data.put("startDoc",      record.getStartDoc());
+        data.put("navPath",       record.getNavPath());
+        data.put("elapsedMs",     record.getElapsedMs());
+
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    /**
      * 전적 목록 + 누적 통계 조회
      * - /record/list 호출 시 stale in_progress 자동 정리
      * Response: { records: [...], summary: { totalGames, totalClears, totalAbandons, bestTimeMs } }

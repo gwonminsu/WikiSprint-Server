@@ -150,4 +150,19 @@ public class GameRecordService {
     public List<GameRecordVO> getRecentRecords(String accountId) {
         return gameRecordMapper.selectRecentRecords(accountId);
     }
+
+    /**
+     * 공유 링크용 전적 조회
+     * - shareId = recordId에서 "REC-" prefix 제거한 UUID 문자열
+     * - status='cleared'인 경우에만 반환, 아니면 null
+     */
+    @Transactional(readOnly = true)
+    public GameRecordVO getSharedRecord(String shareId) {
+        String recordId = "REC-" + shareId;
+        GameRecordVO record = gameRecordMapper.selectRecordByRecordId(recordId);
+        if (record == null || !"cleared".equals(record.getStatus())) {
+            return null;
+        }
+        return record;
+    }
 }
