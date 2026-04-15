@@ -3,6 +3,9 @@ package com.wikisprint.server.service;
 import com.wikisprint.server.global.common.status.FileException;
 import com.wikisprint.server.global.common.util.FileStorageUtil;
 import com.wikisprint.server.mapper.AccountMapper;
+import com.wikisprint.server.mapper.ConsentMapper;
+import com.wikisprint.server.mapper.GameRecordMapper;
+import com.wikisprint.server.mapper.RankingMapper;
 import com.wikisprint.server.vo.AccountVO;
 import com.fasterxml.uuid.Generators;
 import lombok.RequiredArgsConstructor;
@@ -13,15 +16,24 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AccountService {
     private final AccountMapper accountMapper;
     private final FileStorageUtil fileStorageUtil;
+    // [추가] 탈퇴 처리 시 하위 데이터 삭제용 Mapper
+    private final GameRecordMapper gameRecordMapper;
+    private final RankingMapper rankingMapper;
+    private final ConsentMapper consentMapper;
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
 
     private static final String PROFILE_CATEGORY = "profile";
+
+    // 탈퇴 스케줄러 배치 처리 단위
+    private static final int DELETION_BATCH_SIZE = 100;
 
     /**
      * 닉네임 변경
@@ -138,5 +150,70 @@ public class AccountService {
     @Transactional(readOnly = true)
     public AccountVO getAccountByUuid(String accountUuid) {
         return accountMapper.selectAccountByUuid(accountUuid);
+    }
+
+    /**
+     * [추가] 회원탈퇴 요청 (7일 유예)
+     * deletion_requested_at = NOW() 설정. 7일 후 스케줄러가 영구 삭제.
+     */
+    @Transactional
+    public void requestDeletion(String accountUuid) {
+        AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
+        if (account == null) {
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
+        }
+        accountMapper.updateDeletionRequestedAt(accountUuid, LocalDateTime.now());
+        log.info("DELETION REQUESTED uuid: {}", accountUuid);
+    }
+
+    /**
+     * [추가] 계정 즉시 삭제 (테스트용 immediate 옵션 또는 스케줄러에서 호출)
+     * FK 의존성 순서로 삭제: game_records → ranking_records → consent_records → accounts
+     */
+    @Transactional
+    public void deleteAccountImmediately(String accountUuid) {
+        AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
+        if (account == null) {
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
+        }
+
+        // 프로필 이미지 파일 삭제 (파일 없어도 무시)
+        if (account.getProfileImgUrl() != null && !account.getProfileImgUrl().isEmpty()) {
+            try {
+                String fullPath = fileStorageUtil.getStoragePath() + "/" + account.getProfileImgUrl();
+                fileStorageUtil.deleteFile(fullPath);
+            } catch (Exception e) {
+                log.warn("프로필 이미지 삭제 실패 (무시): {}", e.getMessage());
+            }
+        }
+
+        // FK 순서로 하위 데이터 삭제
+        gameRecordMapper.deleteAllByAccountId(accountUuid);
+        rankingMapper.deleteAllByAccountId(accountUuid);
+        consentMapper.deleteAllByAccountId(accountUuid);
+        accountMapper.deleteAccount(accountUuid);
+
+        log.info("ACCOUNT DELETED uuid: {}", accountUuid);
+    }
+
+    /**
+     * [추가] 만료된 탈퇴 계정 배치 삭제 (스케줄러에서 호출)
+     * deletion_requested_at + 7일 경과 계정을 최대 DELETION_BATCH_SIZE건씩 처리.
+     */
+    @Transactional
+    public int deleteExpiredAccounts() {
+        List<AccountVO> expiredAccounts =
+            accountMapper.selectExpiredDeletionAccounts(DELETION_BATCH_SIZE);
+
+        int deletedCount = 0;
+        for (AccountVO account : expiredAccounts) {
+            try {
+                deleteAccountImmediately(account.getUuid());
+                deletedCount++;
+            } catch (Exception e) {
+                log.error("만료 계정 삭제 실패 uuid: {}, error: {}", account.getUuid(), e.getMessage());
+            }
+        }
+        return deletedCount;
     }
 }

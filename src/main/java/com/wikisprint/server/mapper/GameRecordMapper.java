@@ -61,4 +61,7 @@ public interface GameRecordMapper {
 
     /** 공유용 전적 단건 조회 (accountId 불필요 — recordId만으로 검색) */
     GameRecordVO selectRecordByRecordId(@Param("recordId") String recordId);
+
+    /** [추가] 회원탈퇴 처리 시 계정의 모든 게임 전적 삭제 */
+    void deleteAllByAccountId(@Param("accountId") String accountId);
 }

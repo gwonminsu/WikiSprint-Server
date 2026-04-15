@@ -52,4 +52,7 @@ public interface RankingMapper {
             @Param("difficulty") String difficulty,
             @Param("bucket") LocalDate bucket
     );
+
+    /** [추가] 회원탈퇴 처리 시 계정의 모든 랭킹 기록 삭제 */
+    void deleteAllByAccountId(@Param("accountId") String accountId);
 }

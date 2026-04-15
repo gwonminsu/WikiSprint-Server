@@ -44,21 +44,22 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 ```
 com.wikisprint.server/
 ├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController
-├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService
-├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper (MyBatis DAO)
-├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO
-├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>
+├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService, AccountDeletionScheduler, NicknameGenerator
+├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper, ConsentMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO, ConsentRecordVO
+├── dto/                 # GoogleLoginReqDTO, RegisterReqDTO, ConsentItemDTO, ApiResponse<T>
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
     └── common/
         ├── auth/        # JwtTokenProvider, JwtAuthenticationFilter
         ├── status/      # 커스텀 예외
         ├── util/        # FileStorageUtil
+        ├── ConsentConstants  # 약관 타입·버전·필수 목록 상수
         └── GlobalExceptionHandler
 ```
 
 **MyBatis Mapper XML 위치:**
-- `src/main/resources/mapper/user/` — AccountMapper
+- `src/main/resources/mapper/user/` — AccountMapper, ConsentMapper
 - `src/main/resources/mapper/game/` — TargetWordMapper, GameRecordMapper, RankingMapper
 
 ## 핵심 시스템
@@ -68,9 +69,21 @@ com.wikisprint.server/
 ```
 POST /auth/google (credential: Google ID Token)
   → GoogleIdTokenVerifier.verify()
-  → payload에서 sub(google_id), email, name, picture 추출
+  → payload에서 sub(google_id), email 추출
   → accountMapper.selectAccountByGoogleId()
-  → 기존 계정 없으면 자동 가입 (insertAccount)
+  → 기존 계정 없으면: is_new_user=true + id_token_string 반환 (계정 미생성)
+  → 탈퇴 대기 계정이면: is_deletion_pending=true + deletion_scheduled_at 반환 (JWT 미발급)
+  → 정상 계정: JWT access token + refresh token 발급 및 반환
+
+POST /auth/register (credential: Google ID Token, consents: 약관 동의 목록)
+  → GoogleIdTokenVerifier.verify()
+  → 필수 동의 항목(terms_of_service, privacy_policy, age_verification) 서버 검증
+  → NicknameGenerator로 자동 닉네임 생성
+  → accounts 삽입 + consent_records 삽입 (단일 트랜잭션)
+  → JWT access token + refresh token 발급 및 반환
+
+POST /auth/cancel-deletion (credential: Google ID Token)
+  → 본인 확인 후 deletion_requested_at = NULL 복원
   → JWT access token + refresh token 발급 및 반환
 ```
 
@@ -81,12 +94,13 @@ POST /auth/google (credential: Google ID Token)
   - `account_id` VARCHAR(50) PK
   - `google_id` VARCHAR(255) UNIQUE
   - `email` VARCHAR(255)
-  - `nick` VARCHAR(50)
+  - `nick` VARCHAR(50) UNIQUE
   - `profile_img_url` VARCHAR(500)
   - `nationality` VARCHAR(2) DEFAULT NULL (ISO 3166-1 alpha-2 국가 코드, null = 무국적)
   - `is_admin` BOOLEAN NOT NULL DEFAULT FALSE
   - `total_games`, `total_clears`, `total_abandons` INTEGER NOT NULL DEFAULT 0 (누적 통계)
   - `best_record` BIGINT DEFAULT NULL (전체 클리어 기록 중 최단 시간, ms. null = 클리어 기록 없음)
+  - `deletion_requested_at` TIMESTAMP DEFAULT NULL (null = 정상 계정, non-null = 탈퇴 대기 상태)
   - `last_login`, `created_at`, `updated_at`
 - 테이블: `target_words` (제시어)
   - `word_id` SERIAL PK
@@ -106,6 +120,14 @@ POST /auth/google (credential: Google ID Token)
   - `last_article` VARCHAR(300) (in_progress 추적용)
   - `played_at`, `created_at` TIMESTAMP
   - CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
+- 테이블: `consent_records` (약관 동의 이력)
+  - `id` SERIAL PK
+  - `account_id` VARCHAR(50) FK → accounts
+  - `consent_type` VARCHAR(50) — `terms_of_service` | `privacy_policy` | `age_verification` | `marketing_notification`
+  - `consent_version` VARCHAR(20) (예: `v1.0`)
+  - `agreed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  - UNIQUE(account_id, consent_type, consent_version) — 중복 동의 방지
+  - row 존재 = 동의, row 부재 = 미동의 (is_agreed 컬럼 없음)
 - 테이블: `ranking_records` (랭킹 기록)
   - `id` SERIAL PK
   - `account_id` VARCHAR(50) FK → accounts
@@ -126,6 +148,29 @@ POST /auth/google (credential: Google ID Token)
 - 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`
 - 보호된 엔드포인트: JWT Bearer 토큰 필요
 - 관리자 엔드포인트 (`/admin/**`): JWT 인증 + `AdminController.resolveAdmin()` DB 레벨 `is_admin` 이중 검증
+
+### 인증 API (`/api/auth/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /auth/google` | Google 로그인 (신규/탈퇴대기/정상 분기) | 공개 |
+| `POST /auth/google/code` | iOS 전용 OAuth code flow 로그인 | 공개 |
+| `POST /auth/register` | 약관 동의 후 신규 가입 (body: `{ credential, consents[] }`) | 공개 |
+| `POST /auth/cancel-deletion` | 탈퇴 취소 + 로그인 (body: `{ credential }`) | 공개 |
+| `POST /auth/reissue` | JWT 재발급 | Refresh Token |
+| `POST /auth/logout` | 로그아웃 | JWT |
+
+### 계정 API (`/api/account/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /account/me` | 내 계정 정보 조회 (email, is_admin 포함) | JWT |
+| `POST /account/info/{accountId}` | 공개 계정 정보 조회 | 공개 |
+| `POST /account/nick/update` | 닉네임 변경 | JWT |
+| `POST /account/nationality/update` | 국적 변경 | JWT |
+| `POST /account/profile/image/upload` | 프로필 이미지 업로드 | JWT |
+| `POST /account/profile/image/remove` | 프로필 이미지 삭제 | JWT |
+| `POST /account/delete/request` | 회원탈퇴 요청 (`?immediate=false`) | JWT |
 
 ### 관리자 API (`/api/admin/**`)
 

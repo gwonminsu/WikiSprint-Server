@@ -102,4 +102,9 @@
         )
     </delete>
 
+    <!-- [추가] 회원탈퇴 처리: 계정의 모든 랭킹 기록 삭제 -->
+    <delete id="deleteAllByAccountId">
+        DELETE FROM ranking_records WHERE account_id = #{accountId}
+    </delete>
+
 </mapper>
