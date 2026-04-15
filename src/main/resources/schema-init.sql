@@ -9,34 +9,23 @@ CREATE TABLE IF NOT EXISTS accounts (
     account_id      VARCHAR(50)   NOT NULL PRIMARY KEY,
     google_id       VARCHAR(255)  NOT NULL UNIQUE,
     email           VARCHAR(255)  NOT NULL,
+    nationality     VARCHAR(2)    DEFAULT NULL,
     nick            VARCHAR(50)   NOT NULL,
     profile_img_url VARCHAR(500),
     is_admin        BOOLEAN       NOT NULL DEFAULT FALSE,
     last_login      TIMESTAMP,
+    total_games     INTEGER       NOT NULL DEFAULT 0,
+    total_clears    INTEGER       NOT NULL DEFAULT 0,
+    total_abandons  INTEGER       NOT NULL DEFAULT 0,
+    best_record     BIGINT        DEFAULT NULL,
     created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 탈퇴 요청 일시 (null = 정상, not null = 탈퇴 요청 상태)
+    deletion_requested_at TIMESTAMP DEFAULT NULL,
 
--- 기존 DB 마이그레이션용 (이미 테이블이 존재하는 경우)
-ALTER TABLE IF EXISTS accounts ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_games    INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_clears   INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_abandons INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE accounts ADD COLUMN IF NOT EXISTS best_record    BIGINT  DEFAULT NULL;
-ALTER TABLE accounts ADD COLUMN IF NOT EXISTS nationality   VARCHAR(2) DEFAULT NULL;
-
--- 기존 클리어 기록에서 최고 기록 마이그레이션 (칼럼 추가 직후 한 번만 적용)
-UPDATE accounts a SET best_record = sub.min_ms
-FROM (
-    SELECT account_id, MIN(elapsed_ms) AS min_ms
-    FROM game_records
-    WHERE status = 'cleared' AND elapsed_ms IS NOT NULL
-    GROUP BY account_id
-) sub
-WHERE a.account_id = sub.account_id AND a.best_record IS NULL;
-
-CREATE INDEX IF NOT EXISTS idx_accounts_google_id ON accounts(google_id);
-CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
+    -- 닉네임 UNIQUE 제약 (race condition 방지)
+    CONSTRAINT uq_accounts_nick UNIQUE (nick)
+    );
 
 -- 제시어 테이블
 CREATE TABLE IF NOT EXISTS target_words (
@@ -105,3 +94,13 @@ CREATE TABLE IF NOT EXISTS ranking_records (
 
 CREATE INDEX IF NOT EXISTS idx_ranking_bucket_sort
     ON ranking_records(period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC);
+
+-- 동의 이력 테이블 (동의한 항목만 저장, is_agreed 컬럼 없음)
+CREATE TABLE IF NOT EXISTS consent_records (
+    id              SERIAL       PRIMARY KEY,
+    account_id      VARCHAR(50)  NOT NULL REFERENCES accounts(account_id),
+    consent_type    VARCHAR(50)  NOT NULL,   -- terms_of_service, privacy_policy, age_verification, marketing_notification
+    consent_version VARCHAR(20)  NOT NULL,   -- v1.0 등 약관 버전
+    agreed_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(account_id, consent_type, consent_version)
+);

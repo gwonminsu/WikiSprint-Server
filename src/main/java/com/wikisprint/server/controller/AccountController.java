@@ -233,6 +233,51 @@ public class AccountController {
     }
 
     /**
+     * [추가] 회원탈퇴 요청
+     * immediate=true이면 즉시 삭제, false(기본)이면 7일 유예 후 스케줄러 삭제
+     * Request body: { "immediate": boolean } (optional, 기본 false)
+     */
+    @PostMapping("/delete/request")
+    public ResponseEntity<?> requestDeletion(
+            @RequestHeader(value = "Authorization", required = false) String accessToken,
+            @RequestBody(required = false) Map<String, Object> request) {
+
+        Authentication auth;
+        try {
+            auth = jwtTokenProvider.getAuthentication(accessToken, false);
+        } catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("ACCESS_TOKEN_EXPIRED"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("유효하지 않은 엑세스 토큰입니다."));
+        }
+
+        AccountVO accountVO = authService.getAccountByUuid(auth.getName());
+        if (accountVO == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("계정을 찾을 수 없습니다."));
+        }
+
+        // immediate 파라미터 추출 (기본값 false)
+        boolean immediate = false;
+        if (request != null && Boolean.TRUE.equals(request.get("immediate"))) {
+            immediate = true;
+        }
+
+        try {
+            if (immediate) {
+                // 즉시 삭제 (테스트용 옵션)
+                accountService.deleteAccountImmediately(accountVO.getUuid());
+                return ResponseEntity.ok(ApiResponse.message("계정이 즉시 삭제되었습니다."));
+            } else {
+                // 7일 유예 탈퇴 요청
+                accountService.requestDeletion(accountVO.getUuid());
+                return ResponseEntity.ok(ApiResponse.message("회원탈퇴가 요청되었습니다. 7일 후 영구 삭제됩니다."));
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * 프로필 이미지 제거
      */
     @PostMapping("/profile/remove")

@@ -104,4 +104,9 @@
           AND played_at &lt; NOW() - (#{thresholdMinutes} || ' minutes')::INTERVAL
     </update>
 
+    <!-- [추가] 회원탈퇴 처리: 계정의 모든 게임 전적 삭제 -->
+    <delete id="deleteAllByAccountId">
+        DELETE FROM game_records WHERE account_id = #{accountId}
+    </delete>
+
 </mapper>

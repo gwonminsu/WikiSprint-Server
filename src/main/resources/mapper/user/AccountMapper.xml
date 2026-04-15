@@ -28,19 +28,25 @@
 
     <!-- UUID로 계정 조회 -->
     <select id="selectAccountByUuid" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin,
+               last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record,
+               deletion_requested_at  <!-- [추가] 탈퇴 요청 일시 -->
         FROM accounts WHERE account_id = #{uuid}
     </select>
 
     <!-- 닉네임으로 계정 조회 -->
     <select id="selectAccountByNick" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin,
+               last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record,
+               deletion_requested_at  <!-- [추가] 탈퇴 요청 일시 -->
         FROM accounts WHERE nick = #{nick}
     </select>
 
     <!-- Google ID로 계정 조회 -->
     <select id="selectAccountByGoogleId" parameterType="string" resultType="AccountVO">
-        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin, last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin,
+               last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record,
+               deletion_requested_at  <!-- [추가] 탈퇴 요청 일시 -->
         FROM accounts WHERE google_id = #{googleId}
     </select>
 
@@ -90,5 +96,39 @@
         WHERE account_id = #{uuid}
           AND (best_record IS NULL OR best_record > #{elapsedMs})
     </update>
+
+    <!-- [추가] base 자체 또는 base + 숫자 suffix(1~3자리) 패턴 닉네임 목록 조회 -->
+    <!-- NOTE: base는 NicknameGenerator 내부 상수 배열에서만 생성된 한글 문자열이므로 -->
+    <!-- 정규식 메타문자가 포함되지 않음. 외부 입력은 이 쿼리에 직접 전달되지 않음. -->
+    <select id="selectNicksByBasePattern" resultType="string">
+        SELECT nick
+        FROM accounts
+        WHERE nick = #{base}
+           OR nick ~ ('^' || #{base} || '[0-9]{1,3}$')
+    </select>
+
+    <!-- [추가] 탈퇴 요청 일시 업데이트 (null 전달 시 탈퇴 취소) -->
+    <update id="updateDeletionRequestedAt">
+        UPDATE accounts
+        SET deletion_requested_at = #{deletionRequestedAt}
+        WHERE account_id = #{uuid}
+    </update>
+
+    <!-- [추가] 7일 경과한 탈퇴 요청 계정 배치 조회 (스케줄러용, LIMIT 적용) -->
+    <select id="selectExpiredDeletionAccounts" resultType="AccountVO">
+        SELECT account_id AS uuid, google_id, email, nick, profile_img_url, nationality, is_admin,
+               last_login, created_at, updated_at, total_games, total_clears, total_abandons, best_record,
+               deletion_requested_at
+        FROM accounts
+        WHERE deletion_requested_at IS NOT NULL
+          AND deletion_requested_at &lt; NOW() - INTERVAL '7 days'
+        ORDER BY deletion_requested_at ASC
+        LIMIT #{limit}
+    </select>
+
+    <!-- [추가] 계정 삭제 (하위 테이블 먼저 삭제 후 호출) -->
+    <delete id="deleteAccount">
+        DELETE FROM accounts WHERE account_id = #{uuid}
+    </delete>
 
 </mapper>

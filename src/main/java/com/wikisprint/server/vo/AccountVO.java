@@ -41,4 +41,8 @@ public class AccountVO {
 
     // 최고 기록 (밀리초 단위, 클리어한 게임 중 최단 시간. null이면 클리어 기록 없음)
     private Long bestRecord;
+
+    // [추가] 회원탈퇴 요청 일시 (null = 정상 계정, non-null = 탈퇴 요청 대기 상태)
+    @JsonProperty("deletion_requested_at")
+    private LocalDateTime deletionRequestedAt;
 }

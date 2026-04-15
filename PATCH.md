@@ -1,3 +1,51 @@
+## v1.11.0 (2026-04-16)
+
+### Added
+- 약관 동의 기반 회원가입 API (`POST /auth/register`)
+  - Google ID Token + 약관 동의 목록(consent items) 전송 후 계정 생성
+  - 필수 동의 3개(서비스 이용약관, 개인정보처리방침, 만 14세 이상) 서버 검증
+  - 선택 동의 1개(마케팅 알림) 지원
+  - 중복 가입 방어: 동일 Google ID로 이미 계정 존재 시 기존 계정으로 로그인 처리
+- 회원탈퇴 API (`POST /account/delete/request`)
+  - `immediate=false` (기본): `deletion_requested_at` 설정, 7일 유예 후 스케줄러가 삭제
+  - `immediate=true` (테스트용): 즉시 영구 삭제 (game_records → ranking_records → consent_records → accounts 순서)
+- 탈퇴 취소 API (`POST /auth/cancel-deletion`)
+  - Google ID Token으로 본인 확인 후 `deletion_requested_at = NULL` 복원 + JWT 발급
+- `AccountDeletionScheduler` — 매일 자정(cron) 실행, 7일 경과 탈퇴 대기 계정 최대 100건 배치 삭제
+  - 삭제 순서: game_records → ranking_records → consent_records → accounts (FK 의존성 순)
+  - 프로필 이미지 파일 동시 삭제 (실패 시 무시)
+- `NicknameGenerator` — 신규 가입 시 자동 닉네임 생성
+  - 영문 형용사 + 명사 조합 (20×20 = 400 base, 예: "SwiftFox")
+  - 중복 시 숫자 suffix 부여 ("SwiftFox1"), 최대 15자 제한
+  - UNIQUE 충돌 시 최대 3회 재시도, 실패 시 UUID 기반 폴백 ("User" + 6자리 UUID)
+- `consent_records` 테이블 신규 생성
+  - `account_id`, `consent_type`, `consent_version`, `agreed_at`
+  - UNIQUE(account_id, consent_type, consent_version) — 동일 약관/버전 중복 동의 방지
+- `ConsentConstants` — 약관 타입 상수 4종 + 버전 상수 + 필수 동의 목록 중앙 관리
+- `ConsentMapper` / `ConsentMapper.xml` — 동의 이력 삽입, 계정별 조회, 계정별 전체 삭제
+- `ConsentRecordVO`, `ConsentItemDTO`, `RegisterReqDTO` 타입 추가
+- `AccountMapper` — `selectNicksByBasePattern` (PostgreSQL 정규식), `updateDeletionRequestedAt`, `selectExpiredDeletionAccounts`, `deleteAccount` 쿼리 추가
+- `GameRecordMapper` — `deleteAllByAccountId` 메서드 추가 (탈퇴 시 전적 일괄 삭제)
+- `RankingMapper` — `deleteAllByAccountId` 메서드 추가 (탈퇴 시 랭킹 일괄 삭제)
+
+### Fixed
+- `accounts` 테이블에 `UNIQUE(nick)` 제약 추가 — 닉네임 중복 방지
+
+### Changed
+- `POST /auth/google` 로그인 플로우 변경
+  - 기존: 계정 없으면 자동 가입 → 변경: `is_new_user: true` + `id_token_string` 반환 (계정 미생성)
+  - 탈퇴 대기 계정 로그인 시: `is_deletion_pending: true` + `deletion_scheduled_at` 반환 (JWT 미발급)
+- `AuthController` — `buildLoginResponse` 헬퍼로 응답 빌드 로직 공통화 (신규/탈퇴/정상 3가지 분기)
+- `AuthService` — `buildLoginResult` 헬퍼로 JWT 발급 로직 공통화 (googleLogin, register, cancelDeletion 재사용)
+- `AccountVO` — `deletionRequestedAt` (LocalDateTime) 필드 추가
+- `accounts` 테이블 — `deletion_requested_at TIMESTAMP DEFAULT NULL` 컬럼 추가
+- `SecurityConfig` — `/auth/register`, `/auth/cancel-deletion` permitAll 추가
+- 서버 버전 1.10.0 → **1.11.0**
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.10.0 (2026-04-13)
 
 ### Added
