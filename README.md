@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.9.0-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.11.1-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -42,6 +42,7 @@
 | 🗄 PostgreSQL 연동 | MyBatis ORM + `wikisprint` 스키마 |
 | 🔒 Spring Security | JWT 필터 기반 인증, CORS 설정 |
 | 🖼 파일 스토리지 | 프로필 이미지 로컬 저장 및 정적 서빙 |
+| 🏷 전적 난이도 응답 | 최근 전적 조회 시 제시어 난이도(`difficulty`)를 함께 반환 |
 
 ---
 
@@ -119,6 +120,16 @@ com.wikisprint.server/
 | `/api/wiki/page/summary/{title}` | GET | ❌ | 문서 요약 반환 |
 | `/api/wiki/target/random` | GET | ❌ | DB에서 랜덤 제시어 조회 |
 
+### 전적 (Record)
+
+| 엔드포인트 | 메서드 | 인증 | 설명 |
+|-----------|--------|------|------|
+| `/api/record/start` | POST | ✅ Bearer | 게임 전적 시작 |
+| `/api/record/update-path` | POST | ✅ Bearer | 이동 경로 갱신 |
+| `/api/record/complete` | POST | ✅ Bearer | 클리어 처리 |
+| `/api/record/abandon` | POST | ✅ Bearer | 포기 처리 |
+| `/api/record/list` | POST | ✅ Bearer | 최근 전적과 통계 조회 (`difficulty` 포함) |
+
 ### 응답 형식
 
 ```json
@@ -163,6 +174,22 @@ com.wikisprint.server/
 | `difficulty` | SMALLINT | 난이도 (1: 쉬움, 2: 보통, 3: 어려움) |
 | `lang` | VARCHAR(5) | 언어 코드 (ko, en, ja) |
 | `created_at` | TIMESTAMP | 등록 시각 |
+
+### game_records
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `record_id` | VARCHAR(50) PK | 전적 ID |
+| `account_id` | VARCHAR(50) FK | 계정 ID |
+| `target_word` | VARCHAR(100) | 제시어 |
+| `start_doc` | VARCHAR(300) | 시작 문서 |
+| `nav_path` | TEXT | 이동 경로 JSON |
+| `elapsed_ms` | BIGINT | 경과 시간 |
+| `status` | VARCHAR(20) | `in_progress`, `cleared`, `abandoned` |
+| `last_article` | VARCHAR(300) | 진행 중 마지막 문서 |
+| `played_at` | TIMESTAMP | 플레이 시각 |
+
+> 최근 전적 조회에서는 `target_words`를 참조해 `difficulty`를 함께 응답합니다.
 
 > 초기화 스크립트: [`src/main/resources/schema-init.sql`](./src/main/resources/schema-init.sql)
 

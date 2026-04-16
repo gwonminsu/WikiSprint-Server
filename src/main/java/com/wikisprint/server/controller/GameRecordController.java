@@ -229,6 +229,7 @@ public class GameRecordController {
             item.put("recordId",    r.getRecordId());
             item.put("accountId",   r.getAccountId());
             item.put("targetWord",  r.getTargetWord());
+            item.put("difficulty",  r.getDifficulty());
             item.put("startDoc",    r.getStartDoc());
             item.put("navPath",     r.getNavPath());
             item.put("elapsedMs",   r.getElapsedMs());

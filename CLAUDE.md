@@ -188,11 +188,13 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 | `POST /record/update-path` | 경로 갱신, body: `{ recordId, navPath, lastArticle }` | JWT |
 | `POST /record/complete` | 클리어 처리, body: `{ recordId, navPath, elapsedMs }` | JWT |
 | `POST /record/abandon` | 포기 처리, body: `{ recordId }` | JWT |
-| `POST /record/list` | 전적 목록 + 누적 통계 조회 (stale 자동 정리 포함) | JWT |
+| `POST /record/list` | 전적 목록 + 누적 통계 조회 (stale 자동 정리 포함, `difficulty` 응답 포함) | JWT |
 
 **전적 라이프사이클:** `in_progress` → `cleared` or `abandoned`  
 **FIFO 정책:** 계정당 터미널 전적(cleared/abandoned) 최대 5건 유지  
 **stale 정리:** `/record/list` 호출 시 60분 경과 `in_progress` 자동 `abandoned` 전환
+
+> 최근 전적 응답의 `difficulty`는 `target_words` 참조 기반 조회 필드이며, `GameRecordVO`, `GameRecordController`, `GameRecordMapper.xml`을 함께 맞춰야 합니다.
 
 ## 외부 의존성
 
