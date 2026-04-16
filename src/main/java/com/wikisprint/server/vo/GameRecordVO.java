@@ -12,6 +12,7 @@ public class GameRecordVO {
     private String recordId;       // PK (REC-{UUID})
     private String accountId;      // FK → accounts.account_id
     private String targetWord;     // 제시어
+    private Short difficulty;      // 제시어 난이도 (1: 쉬움, 2: 보통, 3: 어려움)
     private String startDoc;       // 시작 문서 제목
     private String navPath;        // JSON 배열 문자열 (방문 경로)
     private Long elapsedMs;        // 경과 시간 (밀리초, 클리어 시에만 설정)

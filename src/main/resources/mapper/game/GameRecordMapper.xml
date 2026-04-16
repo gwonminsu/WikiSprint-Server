@@ -8,6 +8,7 @@
         <id     property="recordId"    column="record_id"    />
         <result property="accountId"   column="account_id"   />
         <result property="targetWord"  column="target_word"  />
+        <result property="difficulty"  column="difficulty"   />
         <result property="startDoc"    column="start_doc"    />
         <result property="navPath"     column="nav_path"     />
         <result property="elapsedMs"   column="elapsed_ms"   />
@@ -61,10 +62,18 @@
 
     <!-- 계정별 최근 5개 완료 전적 조회 (cleared/abandoned, 최신순) -->
     <select id="selectRecentRecords" resultMap="GameRecordResultMap">
-        SELECT * FROM game_records
-        WHERE account_id = #{accountId}
-          AND status IN ('cleared', 'abandoned')
-        ORDER BY played_at DESC
+        SELECT gr.*,
+               (
+                   SELECT tw.difficulty
+                   FROM target_words tw
+                   WHERE tw.word = gr.target_word
+                   ORDER BY tw.word_id ASC
+                   LIMIT 1
+               ) AS difficulty
+        FROM game_records gr
+        WHERE gr.account_id = #{accountId}
+          AND gr.status IN ('cleared', 'abandoned')
+        ORDER BY gr.played_at DESC
         LIMIT 5
     </select>
 
