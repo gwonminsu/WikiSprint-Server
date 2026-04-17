@@ -71,6 +71,24 @@ CREATE TABLE game_records (
 
 CREATE INDEX idx_game_records_account ON game_records(account_id, played_at DESC);
 
+-- 공유 전적 스냅샷 테이블
+CREATE TABLE IF NOT EXISTS shared_game_records (
+    share_id         VARCHAR(50)   NOT NULL PRIMARY KEY,             -- 공유용 UUID 문자열
+    account_id       VARCHAR(50)   NOT NULL REFERENCES accounts(account_id),
+    record_id        VARCHAR(50)   NOT NULL UNIQUE,                  -- 원본 game_records.record_id
+    nick             VARCHAR(50)   NOT NULL,
+    profile_img_url  VARCHAR(500),
+    target_word      VARCHAR(100)  NOT NULL,
+    start_doc        VARCHAR(300)  NOT NULL,
+    nav_path         TEXT          NOT NULL,
+    elapsed_ms       BIGINT        NOT NULL,
+    expires_at       TIMESTAMP     NOT NULL,
+    created_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_shared_game_records_expires_at
+    ON shared_game_records(expires_at ASC);
+
 -- 랭킹 테이블 (Top 100 유지 구조)
 CREATE TABLE IF NOT EXISTS ranking_records (
     id           SERIAL       PRIMARY KEY,

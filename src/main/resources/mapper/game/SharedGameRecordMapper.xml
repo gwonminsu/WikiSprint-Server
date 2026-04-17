@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wikisprint.server.mapper.SharedGameRecordMapper">
+
+    <resultMap id="SharedGameRecordResultMap" type="SharedGameRecordVO">
+        <id     property="shareId"       column="share_id" />
+        <result property="accountId"     column="account_id" />
+        <result property="recordId"      column="record_id" />
+        <result property="nick"          column="nick" />
+        <result property="profileImgUrl" column="profile_img_url" />
+        <result property="targetWord"    column="target_word" />
+        <result property="startDoc"      column="start_doc" />
+        <result property="navPath"       column="nav_path" />
+        <result property="elapsedMs"     column="elapsed_ms" />
+        <result property="expiresAt"     column="expires_at" />
+        <result property="createdAt"     column="created_at" />
+    </resultMap>
+
+    <select id="selectActiveShareByRecordId" resultMap="SharedGameRecordResultMap">
+        SELECT *
+        FROM shared_game_records
+        WHERE record_id = #{recordId}
+          AND expires_at &gt; NOW()
+        LIMIT 1
+    </select>
+
+    <select id="selectShareByRecordId" resultMap="SharedGameRecordResultMap">
+        SELECT *
+        FROM shared_game_records
+        WHERE record_id = #{recordId}
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveShareByShareId" resultMap="SharedGameRecordResultMap">
+        SELECT *
+        FROM shared_game_records
+        WHERE share_id = #{shareId}
+          AND expires_at &gt; NOW()
+        LIMIT 1
+    </select>
+
+    <insert id="insertShareRecord" parameterType="SharedGameRecordVO">
+        INSERT INTO shared_game_records (
+            share_id, account_id, record_id, nick, profile_img_url,
+            target_word, start_doc, nav_path, elapsed_ms, expires_at
+        )
+        VALUES (
+            #{shareId}, #{accountId}, #{recordId}, #{nick}, #{profileImgUrl},
+            #{targetWord}, #{startDoc}, #{navPath}, #{elapsedMs}, #{expiresAt}
+        )
+    </insert>
+
+    <update id="updateShareRecord" parameterType="SharedGameRecordVO">
+        UPDATE shared_game_records
+        SET share_id = #{shareId},
+            account_id = #{accountId},
+            nick = #{nick},
+            profile_img_url = #{profileImgUrl},
+            target_word = #{targetWord},
+            start_doc = #{startDoc},
+            nav_path = #{navPath},
+            elapsed_ms = #{elapsedMs},
+            expires_at = #{expiresAt},
+            created_at = NOW()
+        WHERE record_id = #{recordId}
+    </update>
+
+    <delete id="deleteExpiredShareRecords">
+        DELETE FROM shared_game_records
+        WHERE expires_at &lt;= NOW()
+    </delete>
+
+    <delete id="deleteAllByAccountId">
+        DELETE FROM shared_game_records
+        WHERE account_id = #{accountId}
+    </delete>
+
+</mapper>

@@ -1,13 +1,14 @@
 package com.wikisprint.server.service;
 
+import com.fasterxml.uuid.Generators;
 import com.wikisprint.server.global.common.status.FileException;
 import com.wikisprint.server.global.common.util.FileStorageUtil;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.ConsentMapper;
 import com.wikisprint.server.mapper.GameRecordMapper;
 import com.wikisprint.server.mapper.RankingMapper;
+import com.wikisprint.server.mapper.SharedGameRecordMapper;
 import com.wikisprint.server.vo.AccountVO;
-import com.fasterxml.uuid.Generators;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,22 +23,18 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AccountService {
+    private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+    private static final String PROFILE_CATEGORY = "profile";
+    private static final int DELETION_BATCH_SIZE = 100;
+
     private final AccountMapper accountMapper;
     private final FileStorageUtil fileStorageUtil;
-    // [추가] 탈퇴 처리 시 하위 데이터 삭제용 Mapper
     private final GameRecordMapper gameRecordMapper;
     private final RankingMapper rankingMapper;
     private final ConsentMapper consentMapper;
-    private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+    private final SharedGameRecordMapper sharedGameRecordMapper;
 
-    private static final String PROFILE_CATEGORY = "profile";
-
-    // 탈퇴 스케줄러 배치 처리 단위
-    private static final int DELETION_BATCH_SIZE = 100;
-
-    /**
-     * 닉네임 변경
-     */
+    // 닉네임 변경
     @Transactional
     public void updateNick(String accountUuid, String newNick) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
@@ -57,26 +54,23 @@ public class AccountService {
         log.info("UPDATE account nick: {} -> {}", account.getNick(), newNick);
     }
 
-    /**
-     * 국적 변경 (null 허용 — 무국적 복원)
-     */
+    // 국적 변경 (null 허용 - 무국적 복원)
     @Transactional
     public void updateNationality(String accountUuid, String nationality) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
             throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
-        // null은 무국적, 값이 있으면 반드시 2자리 alpha-2 코드
+
         if (nationality != null && nationality.length() != 2) {
             throw new IllegalArgumentException("유효하지 않은 국적 코드입니다.");
         }
+
         accountMapper.updateNationality(accountUuid, nationality);
         log.info("UPDATE account nationality: {} -> {}", account.getNationality(), nationality);
     }
 
-    /**
-     * 프로필 이미지 업로드/변경
-     */
+    // 프로필 이미지 업로드/변경
     @Transactional
     public String updateProfileImage(String accountUuid, MultipartFile file) throws IOException {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
@@ -105,16 +99,13 @@ public class AccountService {
         fileStorageUtil.saveFile(file, storagePath, storedName);
 
         String uri = fileStorageUtil.buildUri(accountUuid, accountUuid, PROFILE_CATEGORY, null, storedName);
-
         accountMapper.updateProfileImgUrl(accountUuid, uri);
         log.info("UPDATE account profile_img_url: {}", uri);
 
         return uri;
     }
 
-    /**
-     * 프로필 이미지 제거
-     */
+    // 프로필 이미지 제거
     @Transactional
     public void removeProfileImage(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
@@ -131,9 +122,7 @@ public class AccountService {
         log.info("REMOVE account profile_img_url: {}", accountUuid);
     }
 
-    /**
-     * 기존 프로필 이미지 파일 삭제 (내부용)
-     */
+    // 기존 프로필 이미지 파일 삭제 (내부용)
     private void deleteExistingProfileFile(String accountUuid, String profileImgUrl) {
         try {
             String fullPath = fileStorageUtil.getStoragePath() + "/" + profileImgUrl;
@@ -144,32 +133,25 @@ public class AccountService {
         }
     }
 
-    /**
-     * 계정 조회
-     */
+    // 계정 조회
     @Transactional(readOnly = true)
     public AccountVO getAccountByUuid(String accountUuid) {
         return accountMapper.selectAccountByUuid(accountUuid);
     }
 
-    /**
-     * [추가] 회원탈퇴 요청 (7일 유예)
-     * deletion_requested_at = NOW() 설정. 7일 후 스케줄러가 영구 삭제.
-     */
+    // 회원탈퇴 요청 (7일 유예)
     @Transactional
     public void requestDeletion(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
             throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
+
         accountMapper.updateDeletionRequestedAt(accountUuid, LocalDateTime.now());
         log.info("DELETION REQUESTED uuid: {}", accountUuid);
     }
 
-    /**
-     * [추가] 계정 즉시 삭제 (테스트용 immediate 옵션 또는 스케줄러에서 호출)
-     * FK 의존성 순서로 삭제: game_records → ranking_records → consent_records → accounts
-     */
+    // 계정 즉시 삭제 - 공유 스냅샷 포함 하위 데이터를 FK 순서대로 정리한다.
     @Transactional
     public void deleteAccountImmediately(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
@@ -188,6 +170,7 @@ public class AccountService {
         }
 
         // FK 순서로 하위 데이터 삭제
+        sharedGameRecordMapper.deleteAllByAccountId(accountUuid);
         gameRecordMapper.deleteAllByAccountId(accountUuid);
         rankingMapper.deleteAllByAccountId(accountUuid);
         consentMapper.deleteAllByAccountId(accountUuid);
@@ -196,14 +179,10 @@ public class AccountService {
         log.info("ACCOUNT DELETED uuid: {}", accountUuid);
     }
 
-    /**
-     * [추가] 만료된 탈퇴 계정 배치 삭제 (스케줄러에서 호출)
-     * deletion_requested_at + 7일 경과 계정을 최대 DELETION_BATCH_SIZE건씩 처리.
-     */
+    // 만료된 탈퇴 계정 배치 삭제 (스케줄러에서 호출)
     @Transactional
     public int deleteExpiredAccounts() {
-        List<AccountVO> expiredAccounts =
-            accountMapper.selectExpiredDeletionAccounts(DELETION_BATCH_SIZE);
+        List<AccountVO> expiredAccounts = accountMapper.selectExpiredDeletionAccounts(DELETION_BATCH_SIZE);
 
         int deletedCount = 0;
         for (AccountVO account : expiredAccounts) {
@@ -214,6 +193,7 @@ public class AccountService {
                 log.error("만료 계정 삭제 실패 uuid: {}, error: {}", account.getUuid(), e.getMessage());
             }
         }
+
         return deletedCount;
     }
 }
