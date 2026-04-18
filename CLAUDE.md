@@ -120,6 +120,12 @@ POST /auth/cancel-deletion (credential: Google ID Token)
   - `last_article` VARCHAR(300) (in_progress 추적용)
   - `played_at`, `created_at` TIMESTAMP
   - CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
+- 테이블: `shared_game_records` (공유 전적 스냅샷)
+  - `share_id` UUID PK
+  - `record_id` VARCHAR(50) FK → game_records
+  - `account_id` VARCHAR(50) FK → accounts
+  - `target_word`, `start_doc`, `nav_path`, `elapsed_ms`, `path_length`
+  - `expires_at`, `created_at` TIMESTAMP
 - 테이블: `consent_records` (약관 동의 이력)
   - `id` SERIAL PK
   - `account_id` VARCHAR(50) FK → accounts
@@ -189,12 +195,15 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 | `POST /record/complete` | 클리어 처리, body: `{ recordId, navPath, elapsedMs }` | JWT |
 | `POST /record/abandon` | 포기 처리, body: `{ recordId }` | JWT |
 | `POST /record/list` | 전적 목록 + 누적 통계 조회 (stale 자동 정리 포함, `difficulty` 응답 포함) | JWT |
+| `POST /record/share` | 공유 전용 스냅샷 생성 또는 재사용, body: `{ recordId }` | JWT |
+| `POST /record/share/{shareId}` | 유효한 공유 스냅샷 조회 | 공개 |
 
 **전적 라이프사이클:** `in_progress` → `cleared` or `abandoned`  
 **FIFO 정책:** 계정당 터미널 전적(cleared/abandoned) 최대 5건 유지  
 **stale 정리:** `/record/list` 호출 시 60분 경과 `in_progress` 자동 `abandoned` 전환
 
 > 최근 전적 응답의 `difficulty`는 `target_words` 참조 기반 조회 필드이며, `GameRecordVO`, `GameRecordController`, `GameRecordMapper.xml`을 함께 맞춰야 합니다.
+> 공유 전적은 `shared_game_records` 스냅샷을 사용하며, 조회 시점에 `expires_at > NOW()` 조건으로 즉시 만료 차단됩니다.
 
 ## 외부 의존성
 
@@ -260,3 +269,13 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 **커밋 규칙:**
 - 제목: `feat: 대표 변경사항 (vX.X.X)`
+
+---
+
+## 최근 변경 메모 (v1.12.0)
+
+- 공유 전적은 원본 `game_records`를 직접 노출하지 않고 `shared_game_records` 스냅샷으로 분리 관리합니다.
+- `POST /record/share`는 24시간 안의 기존 공유 스냅샷이 있으면 같은 `shareId`를 재사용합니다.
+- `POST /record/share/{shareId}`는 유효한 공유 스냅샷만 반환하며, 실질적인 만료 판정은 조회 시점의 `expires_at > NOW()` 조건으로 처리합니다.
+- 만료된 공유 스냅샷 정리는 `SharedGameRecordCleanupScheduler`가 매시 정각 수행합니다.
+- 계정 탈퇴 처리에는 공유 스냅샷 정리도 함께 포함됩니다.

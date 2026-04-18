@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.11.1-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.12.0-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -43,6 +43,7 @@
 | 🔒 Spring Security | JWT 필터 기반 인증, CORS 설정 |
 | 🖼 파일 스토리지 | 프로필 이미지 로컬 저장 및 정적 서빙 |
 | 🏷 전적 난이도 응답 | 최근 전적 조회 시 제시어 난이도(`difficulty`)를 함께 반환 |
+| 🔗 공유 전적 스냅샷 | 24시간 유효한 `shared_game_records` 기반 공유 링크 제공 |
 
 ---
 
@@ -129,6 +130,8 @@ com.wikisprint.server/
 | `/api/record/complete` | POST | ✅ Bearer | 클리어 처리 |
 | `/api/record/abandon` | POST | ✅ Bearer | 포기 처리 |
 | `/api/record/list` | POST | ✅ Bearer | 최근 전적과 통계 조회 (`difficulty` 포함) |
+| `/api/record/share` | POST | ✅ Bearer | 공유 스냅샷 생성 또는 기존 24시간 스냅샷 재사용 |
+| `/api/record/share/{shareId}` | POST | ❌ | 유효한 공유 스냅샷 조회 |
 
 ### 응답 형식
 
@@ -190,6 +193,21 @@ com.wikisprint.server/
 | `played_at` | TIMESTAMP | 플레이 시각 |
 
 > 최근 전적 조회에서는 `target_words`를 참조해 `difficulty`를 함께 응답합니다.
+
+### shared_game_records
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `share_id` | UUID PK | 공유 전용 식별자 |
+| `record_id` | VARCHAR(50) FK | 원본 전적 ID |
+| `account_id` | VARCHAR(50) FK | 공유 생성 계정 ID |
+| `target_word` | VARCHAR(100) | 공유 시점의 제시어 |
+| `start_doc` | VARCHAR(300) | 공유 시점의 시작 문서 |
+| `nav_path` | TEXT | 공유 시점의 이동 경로 JSON |
+| `elapsed_ms` | BIGINT | 공유 시점의 클리어 시간 |
+| `path_length` | INTEGER | 경로 길이 |
+| `expires_at` | TIMESTAMP | 공유 만료 시각 |
+| `created_at` | TIMESTAMP | 공유 생성 시각 |
 
 > 초기화 스크립트: [`src/main/resources/schema-init.sql`](./src/main/resources/schema-init.sql)
 
@@ -294,6 +312,16 @@ google:
 | 공개 엔드포인트 | `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**` |
 | 보호 엔드포인트 | JWT Bearer 토큰 필요 |
 | 인증 헤더 | `Authorization: Bearer {access_token}` |
+
+---
+
+## 🔗 공유 전적 메모
+
+- `POST /api/record/share`는 `cleared` 전적을 기준으로 `shareId`, `expiresAt`을 반환합니다.
+- 24시간 안에 이미 생성된 공유 스냅샷이 있으면 기존 `shareId`를 재사용합니다.
+- `POST /api/record/share/{shareId}`는 유효한 공유 스냅샷만 조회합니다.
+- 조회 차단은 스케줄러를 기다리지 않고 `expires_at > NOW()` 조건으로 즉시 처리합니다.
+- `SharedGameRecordCleanupScheduler`가 매시 정각 만료된 공유 스냅샷을 정리합니다.
 
 ---
 
