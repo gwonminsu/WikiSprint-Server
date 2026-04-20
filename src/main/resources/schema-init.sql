@@ -6,35 +6,32 @@ SET search_path TO wikisprint;
 
 -- 계정 테이블 (Google 계정 1:1)
 CREATE TABLE IF NOT EXISTS accounts (
-    account_id      VARCHAR(50)   NOT NULL PRIMARY KEY,
-    google_id       VARCHAR(255)  NOT NULL UNIQUE,
-    email           VARCHAR(255)  NOT NULL,
-    nationality     VARCHAR(2)    DEFAULT NULL,
-    nick            VARCHAR(50)   NOT NULL,
-    profile_img_url VARCHAR(500),
-    is_admin        BOOLEAN       NOT NULL DEFAULT FALSE,
-    last_login      TIMESTAMP,
-    total_games     INTEGER       NOT NULL DEFAULT 0,
-    total_clears    INTEGER       NOT NULL DEFAULT 0,
-    total_abandons  INTEGER       NOT NULL DEFAULT 0,
-    best_record     BIGINT        DEFAULT NULL,
-    created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- 탈퇴 요청 일시 (null = 정상, not null = 탈퇴 요청 상태)
-    deletion_requested_at TIMESTAMP DEFAULT NULL,
-
-    -- 닉네임 UNIQUE 제약 (race condition 방지)
+    account_id             VARCHAR(50)   NOT NULL PRIMARY KEY,
+    google_id              VARCHAR(255)  NOT NULL UNIQUE,
+    email                  VARCHAR(255)  NOT NULL,
+    nationality            VARCHAR(2)    DEFAULT NULL,
+    nick                   VARCHAR(50)   NOT NULL,
+    profile_img_url        VARCHAR(500),
+    is_admin               BOOLEAN       NOT NULL DEFAULT FALSE,
+    last_login             TIMESTAMP,
+    total_games            INTEGER       NOT NULL DEFAULT 0,
+    total_clears           INTEGER       NOT NULL DEFAULT 0,
+    total_abandons         INTEGER       NOT NULL DEFAULT 0,
+    best_record            BIGINT        DEFAULT NULL,
+    created_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deletion_requested_at  TIMESTAMP     DEFAULT NULL,
     CONSTRAINT uq_accounts_nick UNIQUE (nick)
-    );
+);
 
 -- 제시어 테이블
 CREATE TABLE IF NOT EXISTS target_words (
-    word_id     SERIAL        PRIMARY KEY,
-    word        VARCHAR(100)  NOT NULL,
-    difficulty  SMALLINT      NOT NULL DEFAULT 1,  -- 1: 쉬움, 2: 보통, 3: 어려움
-    lang        VARCHAR(5)    NOT NULL DEFAULT 'ko', -- 언어 코드 (ko, en, ja)
-    created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(word, lang)
+    word_id      SERIAL        PRIMARY KEY,
+    word         VARCHAR(100)  NOT NULL,
+    difficulty   SMALLINT      NOT NULL DEFAULT 1,      -- 1: 쉬움, 2: 보통, 3: 어려움
+    lang         VARCHAR(5)    NOT NULL DEFAULT 'ko',   -- 언어 코드 (ko, en, ja)
+    created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (word, lang)
 );
 
 -- 초기 제시어 데이터
@@ -53,29 +50,57 @@ INSERT INTO target_words (word, difficulty, lang) VALUES
     ('換気扇', 3, 'ja')
 ON CONFLICT (word, lang) DO NOTHING;
 
--- 게임 전적 테이블 초기화 (DROP 후 재생성)
+-- Ko-fi 후원 이력 테이블
+CREATE TABLE IF NOT EXISTS donations (
+    donation_id     VARCHAR(50)   PRIMARY KEY,
+    source          VARCHAR(20)   NOT NULL DEFAULT 'kofi',
+    external_id     VARCHAR(100),
+    type            VARCHAR(30)   NOT NULL,
+    supporter_name  VARCHAR(100),
+    message         TEXT,
+    amount          VARCHAR(30),
+    currency        VARCHAR(10),
+    is_public       BOOLEAN       DEFAULT TRUE,
+    email           VARCHAR(255),
+    payload         TEXT          NOT NULL,
+    received_at     TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_donations_received_at
+    ON donations (received_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_donations_source_received
+    ON donations (source, received_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_donations_source_external_id
+    ON donations (source, external_id)
+    WHERE external_id IS NOT NULL;
+
+-- 게임 기록 테이블 초기화 (DROP 후 재생성)
 DROP TABLE IF EXISTS game_records;
 CREATE TABLE game_records (
-    record_id    VARCHAR(50)   NOT NULL PRIMARY KEY,             -- REC-{UUID}
-    account_id   VARCHAR(50)   NOT NULL REFERENCES accounts(account_id),
-    target_word  VARCHAR(100)  NOT NULL,                         -- 제시어
-    start_doc    VARCHAR(300)  NOT NULL,                         -- 시작 문서 제목
-    nav_path     TEXT          NOT NULL,                         -- JSON 배열 문자열 (방문 경로)
-    elapsed_ms   BIGINT,                                         -- 경과 시간 (밀리초, 클리어 시에만 설정)
-    status       VARCHAR(20)   NOT NULL DEFAULT 'in_progress',  -- in_progress | cleared | abandoned
-    last_article VARCHAR(300),                                   -- 마지막 도달 문서 (in_progress 추적용)
-    played_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    record_id      VARCHAR(50)   NOT NULL PRIMARY KEY,             -- REC-{UUID}
+    account_id     VARCHAR(50)   NOT NULL REFERENCES accounts(account_id),
+    target_word    VARCHAR(100)  NOT NULL,                         -- 제시어
+    start_doc      VARCHAR(300)  NOT NULL,                         -- 시작 문서 제목
+    nav_path       TEXT          NOT NULL,                         -- JSON 배열 문자열 (방문 경로)
+    elapsed_ms     BIGINT,                                         -- 경과 시간 (밀리초, 클리어 시에만 확정)
+    status         VARCHAR(20)   NOT NULL DEFAULT 'in_progress',   -- in_progress | cleared | abandoned
+    last_article   VARCHAR(300),                                   -- 마지막 도달 문서 (in_progress 추적용)
+    played_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_status CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
 );
 
-CREATE INDEX idx_game_records_account ON game_records(account_id, played_at DESC);
+CREATE INDEX idx_game_records_account
+    ON game_records (account_id, played_at DESC);
 
--- 공유 전적 스냅샷 테이블
+-- 공유 기록 스냅샷 테이블
 CREATE TABLE IF NOT EXISTS shared_game_records (
-    share_id         VARCHAR(50)   NOT NULL PRIMARY KEY,             -- 공유용 UUID 문자열
+    share_id         VARCHAR(50)   NOT NULL PRIMARY KEY,           -- 공유용 UUID 문자열
     account_id       VARCHAR(50)   NOT NULL REFERENCES accounts(account_id),
-    record_id        VARCHAR(50)   NOT NULL UNIQUE,                  -- 원본 game_records.record_id
+    record_id        VARCHAR(50)   NOT NULL UNIQUE,                -- 원본 game_records.record_id
     nick             VARCHAR(50)   NOT NULL,
     profile_img_url  VARCHAR(500),
     target_word      VARCHAR(100)  NOT NULL,
@@ -87,38 +112,34 @@ CREATE TABLE IF NOT EXISTS shared_game_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_shared_game_records_expires_at
-    ON shared_game_records(expires_at ASC);
+    ON shared_game_records (expires_at ASC);
 
 -- 랭킹 테이블 (Top 100 유지 구조)
 CREATE TABLE IF NOT EXISTS ranking_records (
-    id           SERIAL       PRIMARY KEY,
-    account_id   VARCHAR(50)  NOT NULL REFERENCES accounts(account_id),
-
-    period_type  VARCHAR(10)  NOT NULL,   -- daily | weekly | monthly
-    period_bucket DATE        NOT NULL,   -- 서버 KST 기준 버킷 시작일
-    difficulty   VARCHAR(10)  NOT NULL,   -- all | easy | normal | hard
-
-    elapsed_ms   BIGINT       NOT NULL,
-    target_word  VARCHAR(100) NOT NULL,
-    start_doc    VARCHAR(300) NOT NULL,
-    path_length  INTEGER      NOT NULL,
-
-    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT chk_ranking_period CHECK (period_type IN ('daily','weekly','monthly')),
-    CONSTRAINT chk_ranking_diff   CHECK (difficulty IN ('all','easy','normal','hard')),
+    id             SERIAL       PRIMARY KEY,
+    account_id     VARCHAR(50)  NOT NULL REFERENCES accounts(account_id),
+    period_type    VARCHAR(10)  NOT NULL,   -- daily | weekly | monthly
+    period_bucket  DATE         NOT NULL,   -- 서버 KST 기준 버킷 시작일
+    difficulty     VARCHAR(10)  NOT NULL,   -- all | easy | normal | hard
+    elapsed_ms     BIGINT       NOT NULL,
+    target_word    VARCHAR(100) NOT NULL,
+    start_doc      VARCHAR(300) NOT NULL,
+    path_length    INTEGER      NOT NULL,
+    created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_ranking_period CHECK (period_type IN ('daily', 'weekly', 'monthly')),
+    CONSTRAINT chk_ranking_diff CHECK (difficulty IN ('all', 'easy', 'normal', 'hard')),
     CONSTRAINT uq_ranking_bucket_user UNIQUE (period_type, period_bucket, difficulty, account_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ranking_bucket_sort
-    ON ranking_records(period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC);
+    ON ranking_records (period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC);
 
--- 동의 이력 테이블 (동의한 항목만 저장, is_agreed 컬럼 없음)
+-- 동의 이력 테이블 (동의한 항목만 저장하므로 is_agreed 컬럼 없음)
 CREATE TABLE IF NOT EXISTS consent_records (
-    id              SERIAL       PRIMARY KEY,
-    account_id      VARCHAR(50)  NOT NULL REFERENCES accounts(account_id),
-    consent_type    VARCHAR(50)  NOT NULL,   -- terms_of_service, privacy_policy, age_verification, marketing_notification
-    consent_version VARCHAR(20)  NOT NULL,   -- v1.0 등 약관 버전
-    agreed_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(account_id, consent_type, consent_version)
+    id               SERIAL       PRIMARY KEY,
+    account_id       VARCHAR(50)  NOT NULL REFERENCES accounts(account_id),
+    consent_type     VARCHAR(50)  NOT NULL,   -- terms_of_service, privacy_policy, age_verification, marketing_notification
+    consent_version  VARCHAR(20)  NOT NULL,   -- v1.0 같은 약관 버전
+    agreed_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (account_id, consent_type, consent_version)
 );
