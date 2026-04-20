@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wikisprint.server.mapper.DonationMapper">
+
+    <resultMap id="DonationResultMap" type="DonationVO">
+        <id property="donationId" column="donation_id" />
+        <result property="source" column="source" />
+        <result property="externalId" column="external_id" />
+        <result property="type" column="type" />
+        <result property="supporterName" column="supporter_name" />
+        <result property="message" column="message" />
+        <result property="amount" column="amount" />
+        <result property="currency" column="currency" />
+        <result property="isPublic" column="is_public" />
+        <result property="email" column="email" />
+        <result property="payload" column="payload" />
+        <result property="receivedAt" column="received_at" />
+        <result property="createdAt" column="created_at" />
+    </resultMap>
+
+    <insert id="insertDonation" parameterType="DonationVO">
+        INSERT INTO donations (
+            donation_id,
+            source,
+            external_id,
+            type,
+            supporter_name,
+            message,
+            amount,
+            currency,
+            is_public,
+            email,
+            payload,
+            received_at,
+            created_at
+        ) VALUES (
+            #{donationId},
+            #{source},
+            #{externalId},
+            #{type},
+            #{supporterName},
+            #{message},
+            #{amount},
+            #{currency},
+            #{isPublic},
+            #{email},
+            #{payload},
+            #{receivedAt},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectLatestDonations" resultMap="DonationResultMap">
+        SELECT donation_id,
+               source,
+               external_id,
+               type,
+               supporter_name,
+               message,
+               amount,
+               currency,
+               is_public,
+               email,
+               payload,
+               received_at,
+               created_at
+        FROM donations
+        ORDER BY received_at DESC, created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectDonationById" resultMap="DonationResultMap">
+        SELECT donation_id,
+               source,
+               external_id,
+               type,
+               supporter_name,
+               message,
+               amount,
+               currency,
+               is_public,
+               email,
+               payload,
+               received_at,
+               created_at
+        FROM donations
+        WHERE donation_id = #{donationId}
+        LIMIT 1
+    </select>
+
+    <select id="existsBySourceAndExternalId" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM donations
+            WHERE source = #{source}
+              AND external_id = #{externalId}
+        )
+    </select>
+</mapper>
