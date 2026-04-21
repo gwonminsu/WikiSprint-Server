@@ -16,6 +16,10 @@ public interface DonationMapper {
 
     void clearWikiSprintAccountIdByAccountId(@Param("accountId") String accountId);
 
+    List<DonationVO> selectPendingAccountTransfers();
+
+    int confirmAccountTransferDonation(@Param("donationId") String donationId);
+
     List<DonationVO> selectLatestDonations(@Param("limit") int limit);
 
     List<DonationVO> selectAllDonations();
