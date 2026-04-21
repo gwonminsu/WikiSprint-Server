@@ -5,6 +5,7 @@ import com.wikisprint.server.global.common.status.FileException;
 import com.wikisprint.server.global.common.util.FileStorageUtil;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.ConsentMapper;
+import com.wikisprint.server.mapper.DonationMapper;
 import com.wikisprint.server.mapper.GameRecordMapper;
 import com.wikisprint.server.mapper.RankingMapper;
 import com.wikisprint.server.mapper.SharedGameRecordMapper;
@@ -33,6 +34,7 @@ public class AccountService {
     private final RankingMapper rankingMapper;
     private final ConsentMapper consentMapper;
     private final SharedGameRecordMapper sharedGameRecordMapper;
+    private final DonationMapper donationMapper;
 
     // 닉네임 변경
     @Transactional
@@ -174,6 +176,7 @@ public class AccountService {
         gameRecordMapper.deleteAllByAccountId(accountUuid);
         rankingMapper.deleteAllByAccountId(accountUuid);
         consentMapper.deleteAllByAccountId(accountUuid);
+        donationMapper.clearWikiSprintAccountIdByAccountId(accountUuid);
         accountMapper.deleteAccount(accountUuid);
 
         log.info("ACCOUNT DELETED uuid: {}", accountUuid);

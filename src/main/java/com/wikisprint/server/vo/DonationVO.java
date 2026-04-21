@@ -11,15 +11,17 @@ import java.time.LocalDateTime;
 public class DonationVO {
     private String donationId;
     private String source;
-    private String externalId;
+    private String kofiAccountId;
+    private String wikisprintAccountId;
+    private String kofiMessageId;
+    private String accountNick;
+    private String accountProfileImgUrl;
     private String type;
     private String supporterName;
     private String message;
-    private String amount;
+    private Long amountCents;
     private String currency;
-    private Boolean isPublic;
-    private String email;
-    private String payload;
+    private Boolean isAnonymous;
     private LocalDateTime receivedAt;
     private LocalDateTime createdAt;
 }

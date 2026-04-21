@@ -13,6 +13,7 @@ public interface AccountMapper {
     AccountVO selectAccountByUuid(String uuid);
     AccountVO selectAccountByNick(String nick);
     AccountVO selectAccountByGoogleId(String googleId);
+    AccountVO selectAccountByEmail(String email);
 
     // [추가] base 자체 또는 base + 숫자 suffix(1~3자리) 패턴의 닉네임 목록 조회
     // NicknameGenerator의 suffix 계산에 사용. base는 내부 생성 문자열만 전달됨.

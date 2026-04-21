@@ -2,6 +2,7 @@ package com.wikisprint.server.global.config;
 
 import com.wikisprint.server.global.common.auth.JwtAuthenticationFilter;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
+import com.wikisprint.server.global.filter.SimpleRateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
+    private final SimpleRateLimitFilter simpleRateLimitFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -49,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/record/share/**", "/api/record/share/**").permitAll()
                         // 관리자 전용 엔드포인트 — DB 레벨 검증은 AdminController.resolveAdmin()에서 처리
                         .anyRequest().authenticated())
+                .addFilterBefore(simpleRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
