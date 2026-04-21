@@ -6,8 +6,8 @@ import com.wikisprint.server.service.DonationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,12 +21,17 @@ public class DonationController {
 
     private final DonationService donationService;
 
-    @GetMapping("/latest")
+    @PostMapping("/latest")
     public ResponseEntity<ApiResponse<List<DonationResponseDTO>>> getLatestDonations() {
         return ResponseEntity.ok(ApiResponse.success(donationService.getLatestDonations()));
     }
 
-    @GetMapping("/{donationId}")
+    @PostMapping
+    public ResponseEntity<ApiResponse<List<DonationResponseDTO>>> getAllDonations() {
+        return ResponseEntity.ok(ApiResponse.success(donationService.getAllDonations()));
+    }
+
+    @PostMapping("/{donationId}")
     public ResponseEntity<?> getDonation(@PathVariable String donationId) {
         DonationResponseDTO donation = donationService.getDonationById(donationId);
         if (donation == null) {

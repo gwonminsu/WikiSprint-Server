@@ -51,20 +51,21 @@ INSERT INTO target_words (word, difficulty, lang) VALUES
 ON CONFLICT (word, lang) DO NOTHING;
 
 -- Ko-fi 후원 이력 테이블
-CREATE TABLE IF NOT EXISTS donations (
-    donation_id     VARCHAR(50)   PRIMARY KEY,
-    source          VARCHAR(20)   NOT NULL DEFAULT 'kofi',
-    external_id     VARCHAR(100),
-    type            VARCHAR(30)   NOT NULL,
-    supporter_name  VARCHAR(100),
-    message         TEXT,
-    amount          VARCHAR(30),
-    currency        VARCHAR(10),
-    is_public       BOOLEAN       DEFAULT TRUE,
-    email           VARCHAR(255),
-    payload         TEXT          NOT NULL,
-    received_at     TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
-    created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS donations;
+CREATE TABLE donations (
+    donation_id            VARCHAR(50)   PRIMARY KEY,
+    source                 VARCHAR(20)   NOT NULL DEFAULT 'kofi',
+    kofi_account_id        VARCHAR(100),
+    wikisprint_account_id  VARCHAR(50)   REFERENCES accounts(account_id) ON DELETE SET NULL,
+    kofi_message_id        VARCHAR(100)  NOT NULL UNIQUE,
+    type                   VARCHAR(30)   NOT NULL,
+    supporter_name         VARCHAR(100),
+    message                TEXT,
+    amount_cents           BIGINT        NOT NULL CHECK (amount_cents >= 0),
+    currency               VARCHAR(10)   NOT NULL,
+    is_anonymous           BOOLEAN       NOT NULL DEFAULT FALSE,
+    received_at            TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    created_at             TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_donations_received_at
@@ -73,9 +74,8 @@ CREATE INDEX IF NOT EXISTS idx_donations_received_at
 CREATE INDEX IF NOT EXISTS idx_donations_source_received
     ON donations (source, received_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_donations_source_external_id
-    ON donations (source, external_id)
-    WHERE external_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_donations_wikisprint_account
+    ON donations (wikisprint_account_id);
 
 -- 게임 기록 테이블 초기화 (DROP 후 재생성)
 DROP TABLE IF EXISTS game_records;

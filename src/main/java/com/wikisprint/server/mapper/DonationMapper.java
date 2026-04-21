@@ -12,12 +12,13 @@ public interface DonationMapper {
 
     void insertDonation(DonationVO donation);
 
+    boolean existsByKofiMessageId(@Param("kofiMessageId") String kofiMessageId);
+
+    void clearWikiSprintAccountIdByAccountId(@Param("accountId") String accountId);
+
     List<DonationVO> selectLatestDonations(@Param("limit") int limit);
 
-    DonationVO selectDonationById(@Param("donationId") String donationId);
+    List<DonationVO> selectAllDonations();
 
-    boolean existsBySourceAndExternalId(
-            @Param("source") String source,
-            @Param("externalId") String externalId
-    );
+    DonationVO selectDonationById(@Param("donationId") String donationId);
 }

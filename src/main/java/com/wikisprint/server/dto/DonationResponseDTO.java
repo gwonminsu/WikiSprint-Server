@@ -15,11 +15,14 @@ import java.time.LocalDateTime;
 public class DonationResponseDTO {
     private String donationId;
     private String source;
+    private String accountId;
+    private String accountNick;
+    private String accountProfileImgUrl;
     private String type;
     private String supporterName;
     private String message;
     private String amount;
     private String currency;
-    private Boolean isPublic;
+    private Boolean isAnonymous;
     private LocalDateTime receivedAt;
 }

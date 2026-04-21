@@ -7,95 +7,106 @@
     <resultMap id="DonationResultMap" type="DonationVO">
         <id property="donationId" column="donation_id" />
         <result property="source" column="source" />
-        <result property="externalId" column="external_id" />
+        <result property="kofiAccountId" column="kofi_account_id" />
+        <result property="wikisprintAccountId" column="wikisprint_account_id" />
+        <result property="kofiMessageId" column="kofi_message_id" />
+        <result property="accountNick" column="account_nick" />
+        <result property="accountProfileImgUrl" column="account_profile_img_url" />
         <result property="type" column="type" />
         <result property="supporterName" column="supporter_name" />
         <result property="message" column="message" />
-        <result property="amount" column="amount" />
+        <result property="amountCents" column="amount_cents" />
         <result property="currency" column="currency" />
-        <result property="isPublic" column="is_public" />
-        <result property="email" column="email" />
-        <result property="payload" column="payload" />
+        <result property="isAnonymous" column="is_anonymous" />
         <result property="receivedAt" column="received_at" />
         <result property="createdAt" column="created_at" />
     </resultMap>
+
+    <sql id="DonationSelectColumns">
+        d.donation_id,
+        d.source,
+        d.kofi_account_id,
+        d.wikisprint_account_id,
+        d.kofi_message_id,
+        a.nick AS account_nick,
+        a.profile_img_url AS account_profile_img_url,
+        d.type,
+        d.supporter_name,
+        d.message,
+        d.amount_cents,
+        d.currency,
+        d.is_anonymous,
+        d.received_at,
+        d.created_at
+    </sql>
 
     <insert id="insertDonation" parameterType="DonationVO">
         INSERT INTO donations (
             donation_id,
             source,
-            external_id,
+            kofi_account_id,
+            wikisprint_account_id,
+            kofi_message_id,
             type,
             supporter_name,
             message,
-            amount,
+            amount_cents,
             currency,
-            is_public,
-            email,
-            payload,
+            is_anonymous,
             received_at,
             created_at
         ) VALUES (
             #{donationId},
             #{source},
-            #{externalId},
+            #{kofiAccountId},
+            #{wikisprintAccountId},
+            #{kofiMessageId},
             #{type},
             #{supporterName},
             #{message},
-            #{amount},
+            #{amountCents},
             #{currency},
-            #{isPublic},
-            #{email},
-            #{payload},
+            #{isAnonymous},
             #{receivedAt},
             #{createdAt}
         )
     </insert>
 
-    <select id="selectLatestDonations" resultMap="DonationResultMap">
-        SELECT donation_id,
-               source,
-               external_id,
-               type,
-               supporter_name,
-               message,
-               amount,
-               currency,
-               is_public,
-               email,
-               payload,
-               received_at,
-               created_at
+    <select id="existsByKofiMessageId" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
         FROM donations
-        ORDER BY received_at DESC, created_at DESC
+        WHERE kofi_message_id = #{kofiMessageId}
+    </select>
+
+    <update id="clearWikiSprintAccountIdByAccountId">
+        UPDATE donations
+        SET wikisprint_account_id = NULL
+        WHERE wikisprint_account_id = #{accountId}
+    </update>
+
+    <select id="selectLatestDonations" resultMap="DonationResultMap">
+        SELECT
+            <include refid="DonationSelectColumns" />
+        FROM donations d
+        LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        ORDER BY d.received_at DESC, d.created_at DESC
         LIMIT #{limit}
     </select>
 
-    <select id="selectDonationById" resultMap="DonationResultMap">
-        SELECT donation_id,
-               source,
-               external_id,
-               type,
-               supporter_name,
-               message,
-               amount,
-               currency,
-               is_public,
-               email,
-               payload,
-               received_at,
-               created_at
-        FROM donations
-        WHERE donation_id = #{donationId}
-        LIMIT 1
+    <select id="selectAllDonations" resultMap="DonationResultMap">
+        SELECT
+            <include refid="DonationSelectColumns" />
+        FROM donations d
+        LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        ORDER BY d.received_at DESC, d.created_at DESC
     </select>
 
-    <select id="existsBySourceAndExternalId" resultType="boolean">
-        SELECT EXISTS(
-            SELECT 1
-            FROM donations
-            WHERE source = #{source}
-              AND external_id = #{externalId}
-        )
+    <select id="selectDonationById" resultMap="DonationResultMap">
+        SELECT
+            <include refid="DonationSelectColumns" />
+        FROM donations d
+        LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        WHERE d.donation_id = #{donationId}
+        LIMIT 1
     </select>
 </mapper>
