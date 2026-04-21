@@ -84,11 +84,31 @@
         WHERE wikisprint_account_id = #{accountId}
     </update>
 
+    <select id="selectPendingAccountTransfers" resultMap="DonationResultMap">
+        SELECT
+            <include refid="DonationSelectColumns" />
+        FROM donations d
+        LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        WHERE d.source = 'account transfer'
+          AND d.type = 'PendingTransfer'
+        ORDER BY d.created_at DESC
+    </select>
+
+    <update id="confirmAccountTransferDonation">
+        UPDATE donations
+        SET type = 'Donation',
+            received_at = CURRENT_TIMESTAMP
+        WHERE donation_id = #{donationId}
+          AND source = 'account transfer'
+          AND type = 'PendingTransfer'
+    </update>
+
     <select id="selectLatestDonations" resultMap="DonationResultMap">
         SELECT
             <include refid="DonationSelectColumns" />
         FROM donations d
         LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        WHERE d.type != 'PendingTransfer'
         ORDER BY d.received_at DESC, d.created_at DESC
         LIMIT #{limit}
     </select>
@@ -98,6 +118,7 @@
             <include refid="DonationSelectColumns" />
         FROM donations d
         LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        WHERE d.type != 'PendingTransfer'
         ORDER BY d.received_at DESC, d.created_at DESC
     </select>
 
@@ -107,6 +128,7 @@
         FROM donations d
         LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
         WHERE d.donation_id = #{donationId}
+          AND d.type != 'PendingTransfer'
         LIMIT 1
     </select>
 </mapper>
