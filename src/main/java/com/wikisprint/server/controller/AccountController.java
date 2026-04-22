@@ -2,7 +2,7 @@ package com.wikisprint.server.controller;
 
 import com.wikisprint.server.dto.ApiResponse;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
-import com.wikisprint.server.global.common.util.FileStorageUtil;
+import com.wikisprint.server.global.common.storage.FileStorageService;
 import com.wikisprint.server.service.AccountService;
 import com.wikisprint.server.service.AuthService;
 import com.wikisprint.server.vo.AccountVO;
@@ -30,7 +30,7 @@ public class AccountController {
     private final AccountService accountService;
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final FileStorageUtil fileStorageUtil;
+    private final FileStorageService fileStorage;
 
     /**
      * 현재 로그인한 계정 정보 조회
@@ -216,10 +216,10 @@ public class AccountController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
-        String fullPath = fileStorageUtil.getStoragePath() + "/" + relativePath;
+        String fullPath = fileStorage.getStorageRoot() + "/" + relativePath;
 
         try {
-            byte[] fileBytes = fileStorageUtil.readFile(fullPath);
+            byte[] fileBytes = fileStorage.readFile(fullPath);
             String contentType = Files.probeContentType(Paths.get(fullPath));
             if (contentType == null) {
                 contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
