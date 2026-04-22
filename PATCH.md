@@ -1,3 +1,47 @@
+## v1.13.0 (2026-04-22)
+
+### Added
+- 후원 기능 신규 도입
+  - `donations` 테이블 신규 생성(`schema-init.sql`)
+    - 컬럼: `donation_id VARCHAR(50) PK`, `source VARCHAR(20) DEFAULT 'kofi'` (`kofi` | `account transfer`), `kofi_account_id`, `wikisprint_account_id FK → accounts ON DELETE SET NULL`, `kofi_message_id VARCHAR(100) NOT NULL UNIQUE`, `type VARCHAR(30)` (`Donation` | `PendingTransfer`), `supporter_name`, `message`, `amount_cents BIGINT CHECK (>=0)`, `currency VARCHAR(10)`, `is_anonymous BOOLEAN DEFAULT FALSE`, `received_at`, `created_at`
+    - 인덱스 3종: `idx_donations_received_at`, `idx_donations_source_received`, `idx_donations_wikisprint_account`
+  - `DonationVO` / DTO 3종 추가: `AccountTransferDonationCreateRequestDTO`, `DonationResponseDTO`, `PendingAccountTransferDonationResponseDTO`
+  - 스캐폴드 `event/DonationSavedEvent.java` 추가 (현재 미사용)
+- 공개 후원 조회 API (`DonationController`, `permitAll`)
+  - `POST /donations/latest` — Top 20 조회 (`type != 'PendingTransfer'` 필터)
+  - `POST /donations` — 전체 목록 조회
+  - `POST /donations/{donationId}` — 단건 상세 조회
+- 국내(계좌이체) 후원 요청 API
+  - `POST /donations/account-transfer/request` — body: `AccountTransferDonationCreateRequestDTO { coffeeCount, nickname, remitterName, message, anonymous }`, 커피 1잔 = `2000 KRW × 100(cents)`, `coffeeCount` 1~100, `source='account transfer'` + `type='PendingTransfer'`로 삽입, 합성 `kofi_message_id='KOFI-<uuid>'`, JWT 옵셔널(익명/로그인 모두 허용)
+- 관리자 후원 API (`DonationAdminController`, JWT + `resolveAdmin` DB `is_admin` 이중 검증)
+  - `POST /admin/donations/account-transfer/pending` — 대기 목록 조회
+  - `POST /admin/donations/account-transfer/confirm` — 입금 확인 처리 (`type='Donation'` + `received_at=NOW()`)
+- Ko-fi 웹훅 수신 (`DonationWebhookController`)
+  - `POST /webhook/kofi` (`application/x-www-form-urlencoded`). `verification_token`을 `MessageDigest.isEqual`로 상수-시간 비교, `kofi_message_id` 중복 차단, 허용 통화 KRW/USD/EUR/JPY/GBP/CAD/AUD, 이메일 매칭으로 `wikisprint_account_id` 자동 연결. 응답: `SAVED`/`DUPLICATE`/`SKIPPED_DISABLED`
+- `SimpleRateLimitFilter` 신규 추가 — IP+URI 기준 60초 롤링 윈도우 레이트리밋
+  - `/webhook/kofi` = 60 req/min, `/donations/**` + `/api/donations/**` = 30 req/min
+  - `UsernamePasswordAuthenticationFilter` 이전에 등록
+- `DonationMapper` + `DonationMapper.xml` — `insertDonation`, `existsByKofiMessageId`, `clearWikiSprintAccountIdByAccountId`, `selectPendingAccountTransfers`, `confirmAccountTransferDonation`, `selectLatestDonations`, `selectAllDonations`, `selectDonationById`
+- `AccountMapper.selectAccountByEmail` 추가 (Ko-fi 웹훅 이메일 기반 계정 매칭용)
+- 테스트 2종 추가
+  - `DonationControllerTest`: 웹훅 ok/unauthorized/bad-payload, latest/all 목록 조회
+  - `DonationServiceTest`: 토큰 검증, 중복 차단, 익명 마스킹, 금액/메시지 ID 누락, 단건 조회
+- 환경변수(`.env.example`): `kofi.webhook-enabled`, `kofi.webhook-token`, `kofi.donation-url`
+
+### Changed
+- `SecurityConfig`: `/webhook/**`, `/api/webhook/**`, `/donations/**`, `/api/donations/**` `permitAll` 추가. `SimpleRateLimitFilter`를 JWT 필터 앞에 등록. `/admin/donations/**`는 인증 + 컨트롤러 내 `is_admin` 이중 검증 유지
+- `DonationService.toResponseDto` — `is_anonymous=true`인 row는 `supporterName`, `message`, `accountProfileImgUrl`을 null로 마스킹
+- `AccountService.deleteAccountImmediately` — 계정 삭제 시 `donationMapper.clearWikiSprintAccountIdByAccountId` 호출로 FK null 처리 후 삭제 (기존 cascading 보완)
+- 서버 버전 1.12.0 → **1.13.0**
+
+### Fixed
+- 국내 계좌이체 후원과 Ko-fi 후원이 동일 `donations` 테이블을 재사용하되 `source` + `type` 2단계 상태머신(`PendingTransfer` → `Donation`)으로 분리
+  - 공개 API는 `type != 'PendingTransfer'` 필터로 관리자 확인 전 미확정 요청 노출 차단
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.12.0 (2026-04-17)
 
 ### Added

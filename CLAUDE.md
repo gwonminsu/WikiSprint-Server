@@ -43,11 +43,12 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 **패키지 구조:**
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController
-├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService, AccountDeletionScheduler, NicknameGenerator
-├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper, ConsentMapper (MyBatis DAO)
-├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO, ConsentRecordVO
-├── dto/                 # GoogleLoginReqDTO, RegisterReqDTO, ConsentItemDTO, ApiResponse<T>
+├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController, DonationController, DonationAdminController, DonationWebhookController
+├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService, DonationService, AccountDeletionScheduler, NicknameGenerator
+├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper, ConsentMapper, DonationMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO, ConsentRecordVO, DonationVO
+├── dto/                 # GoogleLoginReqDTO, RegisterReqDTO, ConsentItemDTO, ApiResponse<T>, AccountTransferDonationCreateRequestDTO, DonationResponseDTO, PendingAccountTransferDonationResponseDTO
+├── event/               # DonationSavedEvent (현재 미사용 스캐폴드)
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
     └── common/
@@ -55,12 +56,14 @@ com.wikisprint.server/
         ├── status/      # 커스텀 예외
         ├── util/        # FileStorageUtil
         ├── ConsentConstants  # 약관 타입·버전·필수 목록 상수
-        └── GlobalExceptionHandler
+        ├── GlobalExceptionHandler
+        └── filter/          # SimpleRateLimitFilter (IP+URI 기준 레이트리밋)
 ```
 
 **MyBatis Mapper XML 위치:**
 - `src/main/resources/mapper/user/` — AccountMapper, ConsentMapper
 - `src/main/resources/mapper/game/` — TargetWordMapper, GameRecordMapper, RankingMapper
+- `src/main/resources/mapper/` — DonationMapper.xml
 
 ## 핵심 시스템
 
@@ -147,11 +150,26 @@ POST /auth/cancel-deletion (credential: Google ID Token)
   - `created_at` TIMESTAMP
   - UNIQUE(period_type, period_bucket, difficulty, account_id)
   - INDEX: idx_ranking_bucket_sort (period_type, period_bucket, difficulty, elapsed_ms ASC, created_at ASC)
+- 테이블: `donations` (후원 기록)
+  - `donation_id` VARCHAR(50) PK
+  - `source` VARCHAR(20) DEFAULT 'kofi' — `kofi` | `account transfer`
+  - `kofi_account_id` VARCHAR(100)
+  - `wikisprint_account_id` VARCHAR(50) FK → accounts ON DELETE SET NULL
+  - `kofi_message_id` VARCHAR(100) NOT NULL UNIQUE (계좌이체는 합성 `KOFI-<uuid>`)
+  - `type` VARCHAR(30) — `Donation` | `PendingTransfer` 등
+  - `supporter_name` VARCHAR(100)
+  - `message` TEXT
+  - `amount_cents` BIGINT CHECK (>= 0) (KRW 계좌이체: 커피잔 × 2000 × 100)
+  - `currency` VARCHAR(10)
+  - `is_anonymous` BOOLEAN DEFAULT FALSE
+  - `received_at` TIMESTAMP (계좌이체 확인 시 설정)
+  - `created_at` TIMESTAMP
+  - INDEX 3종: `idx_donations_received_at`, `idx_donations_source_received`, `idx_donations_wikisprint_account`
 
 ### 보안 설정
 
 - CORS 허용: `http://localhost:5969` (프론트엔드)
-- 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`
+- 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`, `/donations/**`, `/webhook/**`
 - 보호된 엔드포인트: JWT Bearer 토큰 필요
 - 관리자 엔드포인트 (`/admin/**`): JWT 인증 + `AdminController.resolveAdmin()` DB 레벨 `is_admin` 이중 검증
 
@@ -185,6 +203,28 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 | `POST /admin/words/list` | 전체 제시어 목록 조회 | JWT + is_admin |
 | `POST /admin/words/add` | 제시어 추가 (body: `{ word, difficulty, lang }`) | JWT + is_admin |
 | `POST /admin/words/delete` | 제시어 삭제 (body: `{ wordId }`) | JWT + is_admin |
+
+### 후원 API (`/api/donations/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /donations/latest` | 최근 후원 Top 20 조회 (`type != 'PendingTransfer'`) | 공개 |
+| `POST /donations` | 전체 후원 목록 조회 | 공개 |
+| `POST /donations/{donationId}` | 단건 상세 조회 | 공개 |
+| `POST /donations/account-transfer/request` | 국내 계좌이체 후원 요청 (body: `{ coffeeCount, nickname, remitterName, message, anonymous }`) | 공개 (JWT 옵셔널) |
+
+### 관리자 후원 API (`/api/admin/donations/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /admin/donations/account-transfer/pending` | 미확정 계좌이체 대기 목록 조회 | JWT + is_admin |
+| `POST /admin/donations/account-transfer/confirm` | 입금 확인 처리 (body: `{ donationId }`) — `type='Donation'` + `received_at=NOW()` | JWT + is_admin |
+
+### 웹훅 API (`/api/webhook/**`)
+
+| 엔드포인트 | 설명 | 인증 |
+|---|---|---|
+| `POST /webhook/kofi` | Ko-fi 후원 웹훅 수신 (`application/x-www-form-urlencoded`) — 토큰 상수-시간 비교, 중복 차단 | 공개 (토큰 검증) |
 
 ### 게임 전적 API (`/api/record/**`)
 
@@ -271,6 +311,15 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 - 제목: `feat: 대표 변경사항 (vX.X.X)`
 
 ---
+
+## 최근 변경 메모 (v1.13.0)
+
+- 후원 기능이 추가됐습니다. `donations` 테이블 하나로 Ko-fi 웹훅(`source='kofi'`)과 국내 계좌이체(`source='account transfer'`)를 모두 수용합니다.
+- 국내 계좌이체는 `type='PendingTransfer'`로 삽입되고, 관리자 확인 후 `type='Donation'`으로 전환됩니다. 공개 조회 API는 `type != 'PendingTransfer'` 필터로 미확정 요청을 차단합니다.
+- Ko-fi 웹훅 토큰 검증은 `MessageDigest.isEqual`로 상수-시간 비교를 수행합니다(타이밍 어택 방지).
+- `SimpleRateLimitFilter`가 IP+URI 기준 60초 롤링 윈도우 레이트리밋을 적용합니다(`/webhook/kofi` = 60/min, `/donations/**` = 30/min).
+- `AccountService.deleteAccountImmediately`에 `donationMapper.clearWikiSprintAccountIdByAccountId` 호출이 추가되어 계정 삭제 시 FK null 처리가 이루어집니다.
+- `DonationSavedEvent.java`는 스캐폴드만 존재하며 현재 미사용입니다.
 
 ## 최근 변경 메모 (v1.12.0)
 

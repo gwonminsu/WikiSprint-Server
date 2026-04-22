@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.12.0-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.13.0-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -44,6 +44,7 @@
 | 🖼 파일 스토리지 | 프로필 이미지 로컬 저장 및 정적 서빙 |
 | 🏷 전적 난이도 응답 | 최근 전적 조회 시 제시어 난이도(`difficulty`)를 함께 반환 |
 | 🔗 공유 전적 스냅샷 | 24시간 유효한 `shared_game_records` 기반 공유 링크 제공 |
+| 💖 후원 / 웹훅 | Ko-fi 웹훅 수신 + 국내 계좌이체 2-단계 상태머신, IP 레이트리밋 |
 
 ---
 
@@ -74,11 +75,11 @@ Controller → Service → Mapper (MyBatis) → PostgreSQL
 
 ```
 com.wikisprint.server/
-├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController
-├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService
-├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper (MyBatis DAO)
-├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO
-├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>, TokenDTO
+├── controller/          # AuthController, AccountController, WikiController, AdminController, GameRecordController, RankingController, DonationController, DonationAdminController, DonationWebhookController
+├── service/             # AuthService, AccountService, WikipediaService, GameRecordService, RankingService, DonationService
+├── mapper/              # AccountMapper, TargetWordMapper, GameRecordMapper, RankingMapper, ConsentMapper, DonationMapper (MyBatis DAO)
+├── vo/                  # AccountVO, TargetWordVO, GameRecordVO, RankingRecordVO, ConsentRecordVO, DonationVO
+├── dto/                 # GoogleLoginReqDTO, ApiResponse<T>, TokenDTO, AccountTransferDonationCreateRequestDTO, DonationResponseDTO, PendingAccountTransferDonationResponseDTO
 └── global/
     ├── config/          # SecurityConfig, GoogleOAuthConfig, RestTemplateConfig
     └── common/
@@ -132,6 +133,18 @@ com.wikisprint.server/
 | `/api/record/list` | POST | ✅ Bearer | 최근 전적과 통계 조회 (`difficulty` 포함) |
 | `/api/record/share` | POST | ✅ Bearer | 공유 스냅샷 생성 또는 기존 24시간 스냅샷 재사용 |
 | `/api/record/share/{shareId}` | POST | ❌ | 유효한 공유 스냅샷 조회 |
+
+### 후원 (Donation)
+
+| 엔드포인트 | 메서드 | 인증 | 설명 |
+|-----------|--------|------|------|
+| `/api/donations/latest` | POST | ❌ | 최근 후원 Top 20 |
+| `/api/donations` | POST | ❌ | 전체 후원 목록 |
+| `/api/donations/{donationId}` | POST | ❌ | 단건 상세 조회 |
+| `/api/donations/account-transfer/request` | POST | ❌ (JWT 옵셔널) | 국내 계좌이체 후원 요청 |
+| `/api/admin/donations/account-transfer/pending` | POST | ✅ is_admin | 계좌이체 대기 목록 |
+| `/api/admin/donations/account-transfer/confirm` | POST | ✅ is_admin | 입금 확인 처리 |
+| `/api/webhook/kofi` | POST | ❌ (토큰 검증) | Ko-fi 후원 웹훅 수신 |
 
 ### 응답 형식
 
@@ -208,6 +221,24 @@ com.wikisprint.server/
 | `path_length` | INTEGER | 경로 길이 |
 | `expires_at` | TIMESTAMP | 공유 만료 시각 |
 | `created_at` | TIMESTAMP | 공유 생성 시각 |
+
+### donations
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `donation_id` | VARCHAR(50) PK | 후원 ID |
+| `source` | VARCHAR(20) DEFAULT 'kofi' | `kofi` \| `account transfer` |
+| `kofi_account_id` | VARCHAR(100) | Ko-fi 계정 ID |
+| `wikisprint_account_id` | VARCHAR(50) FK → accounts | 매칭된 계정 (ON DELETE SET NULL) |
+| `kofi_message_id` | VARCHAR(100) UNIQUE NOT NULL | 중복 차단용 (계좌이체는 `KOFI-<uuid>` 합성) |
+| `type` | VARCHAR(30) | `Donation` \| `PendingTransfer` |
+| `supporter_name` | VARCHAR(100) | 표시 닉네임 (익명 시 null) |
+| `message` | TEXT | 후원 메시지 (익명 시 null) |
+| `amount_cents` | BIGINT | 금액 × 100 (KRW: 커피잔 × 200000) |
+| `currency` | VARCHAR(10) | KRW / USD / EUR 등 |
+| `is_anonymous` | BOOLEAN DEFAULT FALSE | 익명 여부 |
+| `received_at` | TIMESTAMP | 계좌이체 확인 시각 |
+| `created_at` | TIMESTAMP | 생성 시각 |
 
 > 초기화 스크립트: [`src/main/resources/schema-init.sql`](./src/main/resources/schema-init.sql)
 
@@ -309,9 +340,20 @@ google:
 | 설정 | 내용 |
 |------|------|
 | CORS 허용 오리진 | `http://localhost:5969` |
-| 공개 엔드포인트 | `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**` |
+| 공개 엔드포인트 | `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`, `/donations/**`, `/webhook/**` |
 | 보호 엔드포인트 | JWT Bearer 토큰 필요 |
 | 인증 헤더 | `Authorization: Bearer {access_token}` |
+
+---
+
+## 💖 후원 메모
+
+- Ko-fi 웹훅(`POST /webhook/kofi`)과 국내 계좌이체 요청(`POST /donations/account-transfer/request`) 모두 `donations` 테이블 하나로 관리합니다.
+- 계좌이체는 `source='account transfer'` + `type='PendingTransfer'`로 삽입되고, 관리자 확인(`/admin/donations/account-transfer/confirm`) 후 `type='Donation'`으로 전환됩니다.
+- 공개 조회 API는 `type != 'PendingTransfer'` 조건으로 미확정 요청을 항상 필터링합니다.
+- Ko-fi 웹훅 토큰은 `MessageDigest.isEqual`로 상수-시간 비교합니다.
+- `SimpleRateLimitFilter`가 IP+URI 기준으로 레이트리밋을 적용합니다(`/webhook/kofi` = 60 req/min, `/donations/**` = 30 req/min).
+- 환경변수: `kofi.webhook-enabled`, `kofi.webhook-token`, `kofi.donation-url` (`.env.example` 참고).
 
 ---
 
