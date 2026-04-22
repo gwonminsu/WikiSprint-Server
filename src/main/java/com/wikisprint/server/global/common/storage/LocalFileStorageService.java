@@ -1,6 +1,7 @@
-package com.wikisprint.server.global.common.util;
+package com.wikisprint.server.global.common.storage;
 
 import com.wikisprint.server.global.common.status.FileException;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,20 +11,23 @@ import java.io.InputStream;
 import java.nio.file.*;
 
 @Component
-public class FileStorageUtil {
+public class LocalFileStorageService implements FileStorageService {
 
-    @Value("${file.storage.path:storage}")
-    private String storagePath;
+    @Value("${app.storage.root:./storage}")
+    private String storageRoot;
 
     @Value("${file.max-size:52428800}")
     private long maxFileSize;
 
-    /**
-     * Build storage path: storage/{userUuid}/{accountUuid}/{category}/{identifier?}
-     */
+    @PostConstruct
+    void ensureRoot() throws IOException {
+        Files.createDirectories(Paths.get(storageRoot));
+    }
+
+    @Override
     public String buildStoragePath(String userUuid, String accountUuid, String category, String identifier) {
         StringBuilder path = new StringBuilder();
-        path.append(storagePath).append("/");
+        path.append(storageRoot).append("/");
         path.append(sanitizePath(userUuid)).append("/");
         path.append(sanitizePath(accountUuid)).append("/");
         path.append(sanitizePath(category));
@@ -35,9 +39,7 @@ public class FileStorageUtil {
         return path.toString();
     }
 
-    /**
-     * Save file to storage
-     */
+    @Override
     public String saveFile(MultipartFile file, String storagePath, String storedName) throws IOException {
         validateFile(file);
 
@@ -48,7 +50,6 @@ public class FileStorageUtil {
 
         Path filePath = directoryPath.resolve(storedName);
 
-        // Path traversal prevention
         if (!filePath.normalize().startsWith(directoryPath.normalize())) {
             throw new FileException("Invalid file path detected");
         }
@@ -60,9 +61,7 @@ public class FileStorageUtil {
         return filePath.toString();
     }
 
-    /**
-     * Delete file from storage
-     */
+    @Override
     public boolean deleteFile(String fullPath) {
         try {
             Path path = Paths.get(fullPath);
@@ -72,9 +71,7 @@ public class FileStorageUtil {
         }
     }
 
-    /**
-     * Delete directory recursively
-     */
+    @Override
     public boolean deleteDirectory(String directoryPath) {
         try {
             Path path = Paths.get(directoryPath);
@@ -85,7 +82,7 @@ public class FileStorageUtil {
                             try {
                                 Files.delete(p);
                             } catch (IOException e) {
-                                // Log error
+                                // ignore individual deletion failures
                             }
                         });
             }
@@ -95,9 +92,7 @@ public class FileStorageUtil {
         }
     }
 
-    /**
-     * Get file as byte array
-     */
+    @Override
     public byte[] readFile(String fullPath) throws IOException {
         Path path = Paths.get(fullPath);
         if (!Files.exists(path)) {
@@ -106,9 +101,7 @@ public class FileStorageUtil {
         return Files.readAllBytes(path);
     }
 
-    /**
-     * Validate file
-     */
+    @Override
     public void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new FileException("File is empty");
@@ -119,9 +112,7 @@ public class FileStorageUtil {
         }
     }
 
-    /**
-     * Extract file extension from original filename
-     */
+    @Override
     public String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return "";
@@ -129,19 +120,7 @@ public class FileStorageUtil {
         return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
     }
 
-    /**
-     * Sanitize path component to prevent path traversal
-     */
-    private String sanitizePath(String pathComponent) {
-        if (pathComponent == null) {
-            return "";
-        }
-        return pathComponent.replaceAll("[^a-zA-Z0-9\\-_]", "");
-    }
-
-    /**
-     * Build URI for database storage (relative path)
-     */
+    @Override
     public String buildUri(String userUuid, String accountUuid, String category, String identifier, String storedName) {
         StringBuilder uri = new StringBuilder();
         uri.append(sanitizePath(userUuid)).append("/");
@@ -156,7 +135,15 @@ public class FileStorageUtil {
         return uri.toString();
     }
 
-    public String getStoragePath() {
-        return storagePath;
+    @Override
+    public String getStorageRoot() {
+        return storageRoot;
+    }
+
+    private String sanitizePath(String pathComponent) {
+        if (pathComponent == null) {
+            return "";
+        }
+        return pathComponent.replaceAll("[^a-zA-Z0-9\\-_]", "");
     }
 }

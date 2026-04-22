@@ -1,3 +1,35 @@
+## v1.14.0 (2026-04-23)
+
+### Added
+- `FileStorageService` 인터페이스 신규 추가 (`global/common/storage/FileStorageService.java`)
+  - 메서드: `buildStoragePath`, `buildUri`, `saveFile`, `deleteFile`, `deleteDirectory`, `readFile`, `validateFile`, `getFileExtension`, `getStorageRoot`
+  - 향후 `S3FileStorageService` 등 구현체 교체 시 DI만으로 전환 가능한 추상화 구조
+- `LocalFileStorageService` 구현체 신규 추가 (`global/common/storage/LocalFileStorageService.java`)
+  - 기존 `FileStorageUtil` 로직 전체 이관
+  - `@Value("${app.storage.root:./storage}")` 설정 키로 저장 루트 주입
+  - `@PostConstruct`에서 루트 디렉토리 자동 생성(`Files.createDirectories`) — 경로 미존재 시 부팅 단계에서 조기 실패
+
+### Changed
+- 파일 저장 경로 외부화: 프로젝트 내부 상대 경로 `storage/` → 환경변수 기반 절대 경로 (`APP_STORAGE_ROOT`)
+  - `application.yaml`에 `app.storage.root: ${APP_STORAGE_ROOT:./storage}` 추가
+  - 개발 환경은 환경변수 미설정 시 `./storage` fallback, 운영은 `APP_STORAGE_ROOT=/opt/wikisprint/storage` 주입
+- `AccountController`, `AccountService` — `FileStorageUtil` 의존 → `FileStorageService` 인터페이스 의존으로 교체
+  - `getStoragePath()` → `getStorageRoot()` 호출로 변경
+- `CLAUDE.md` — 패키지 구조 갱신(`util/FileStorageUtil` → `storage/FileStorageService, LocalFileStorageService`), 파일 저장 경로 운영 가이드 섹션 추가
+
+### Removed
+- `FileStorageUtil.java` 삭제 — 모든 구현이 `LocalFileStorageService`로 이관됨
+
+### Notes
+- DB `profile_img_url` 컬럼값은 저장 루트 프리픽스를 포함하지 않는 상대 경로(`{acc}/{acc}/profile/{FIL-xxx}.ext`)이므로 **DB 마이그레이션 불필요**
+- 기존 `storage/` 데이터를 운영 경로로 이전 시: `rsync -av storage/ /opt/wikisprint/storage/`
+- 운영 서버 초기 설정: `sudo mkdir -p /opt/wikisprint/storage && sudo chown ubuntu:ubuntu /opt/wikisprint/storage`
+- 서버 버전 1.13.0 → **1.14.0**
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.13.0 (2026-04-22)
 
 ### Added

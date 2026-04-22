@@ -2,7 +2,7 @@ package com.wikisprint.server.service;
 
 import com.fasterxml.uuid.Generators;
 import com.wikisprint.server.global.common.status.FileException;
-import com.wikisprint.server.global.common.util.FileStorageUtil;
+import com.wikisprint.server.global.common.storage.FileStorageService;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.ConsentMapper;
 import com.wikisprint.server.mapper.DonationMapper;
@@ -29,7 +29,7 @@ public class AccountService {
     private static final int DELETION_BATCH_SIZE = 100;
 
     private final AccountMapper accountMapper;
-    private final FileStorageUtil fileStorageUtil;
+    private final FileStorageService fileStorage;
     private final GameRecordMapper gameRecordMapper;
     private final RankingMapper rankingMapper;
     private final ConsentMapper consentMapper;
@@ -80,7 +80,7 @@ public class AccountService {
             throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
-        fileStorageUtil.validateFile(file);
+        fileStorage.validateFile(file);
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
@@ -94,13 +94,13 @@ public class AccountService {
 
         // 새 파일 저장
         String fileId = "FIL-" + Generators.timeBasedEpochGenerator().generate().toString();
-        String extension = fileStorageUtil.getFileExtension(file.getOriginalFilename());
+        String extension = fileStorage.getFileExtension(file.getOriginalFilename());
         String storedName = fileId + (extension.isEmpty() ? "" : "." + extension);
 
-        String storagePath = fileStorageUtil.buildStoragePath(accountUuid, accountUuid, PROFILE_CATEGORY, null);
-        fileStorageUtil.saveFile(file, storagePath, storedName);
+        String storagePath = fileStorage.buildStoragePath(accountUuid, accountUuid, PROFILE_CATEGORY, null);
+        fileStorage.saveFile(file, storagePath, storedName);
 
-        String uri = fileStorageUtil.buildUri(accountUuid, accountUuid, PROFILE_CATEGORY, null, storedName);
+        String uri = fileStorage.buildUri(accountUuid, accountUuid, PROFILE_CATEGORY, null, storedName);
         accountMapper.updateProfileImgUrl(accountUuid, uri);
         log.info("UPDATE account profile_img_url: {}", uri);
 
@@ -127,8 +127,8 @@ public class AccountService {
     // 기존 프로필 이미지 파일 삭제 (내부용)
     private void deleteExistingProfileFile(String accountUuid, String profileImgUrl) {
         try {
-            String fullPath = fileStorageUtil.getStoragePath() + "/" + profileImgUrl;
-            fileStorageUtil.deleteFile(fullPath);
+            String fullPath = fileStorage.getStorageRoot() + "/" + profileImgUrl;
+            fileStorage.deleteFile(fullPath);
             log.info("DELETE existing profile file: {}", profileImgUrl);
         } catch (Exception e) {
             log.warn("Failed to delete existing profile image: {}", e.getMessage());
@@ -164,8 +164,8 @@ public class AccountService {
         // 프로필 이미지 파일 삭제 (파일 없어도 무시)
         if (account.getProfileImgUrl() != null && !account.getProfileImgUrl().isEmpty()) {
             try {
-                String fullPath = fileStorageUtil.getStoragePath() + "/" + account.getProfileImgUrl();
-                fileStorageUtil.deleteFile(fullPath);
+                String fullPath = fileStorage.getStorageRoot() + "/" + account.getProfileImgUrl();
+                fileStorage.deleteFile(fullPath);
             } catch (Exception e) {
                 log.warn("프로필 이미지 삭제 실패 (무시): {}", e.getMessage());
             }

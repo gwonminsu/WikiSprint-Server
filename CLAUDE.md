@@ -54,7 +54,7 @@ com.wikisprint.server/
     └── common/
         ├── auth/        # JwtTokenProvider, JwtAuthenticationFilter
         ├── status/      # 커스텀 예외
-        ├── util/        # FileStorageUtil
+        ├── storage/     # FileStorageService (interface), LocalFileStorageService
         ├── ConsentConstants  # 약관 타입·버전·필수 목록 상수
         ├── GlobalExceptionHandler
         └── filter/          # SimpleRateLimitFilter (IP+URI 기준 레이트리밋)
@@ -292,6 +292,22 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 - 요청/응답 본문은 JSON 형식
 - 인증: `Authorization: Bearer {access_token}` 헤더
 - 응답 래퍼: `ApiResponse<T>` (`{ data, message, auth }`)
+
+## 파일 저장 경로
+
+- 저장 루트는 `app.storage.root` 설정으로 관리 (기본값 `./storage`).
+- **운영 환경:** 환경변수 `APP_STORAGE_ROOT=/opt/wikisprint/storage` 주입으로 덮어씀. `application-prod.yaml` 신규 파일 불필요.
+- 구현체: `LocalFileStorageService` (`global/common/storage/`). 부팅 시 `@PostConstruct`에서 루트 디렉토리를 자동 생성함.
+- 향후 S3 전환 시 `FileStorageService` 인터페이스를 구현하는 `S3FileStorageService`를 추가하고 DI 교체만 하면 됨.
+- **DB의 `profile_img_url`** 은 저장 루트 프리픽스 없는 상대 경로(`{acc}/{acc}/profile/{FIL-xxx}.ext`)이므로, 루트가 바뀌어도 DB 변경 불필요.
+- 운영 서버 초기 준비:
+  ```
+  sudo mkdir -p /opt/wikisprint/storage
+  sudo chown ubuntu:ubuntu /opt/wikisprint/storage
+  ```
+- 기존 `storage/` 데이터 마이그레이션: `rsync -av storage/ /opt/wikisprint/storage/`
+
+---
 
 ## Claude Code 명령어
 
