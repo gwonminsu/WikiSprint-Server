@@ -64,6 +64,7 @@ public class SecurityConfig {
         configuration.addAllowedOrigin("http://13.209.255.179:5969");
         configuration.addAllowedOrigin("https://main.d11crzf9vrq2hy.amplifyapp.com");
         configuration.addAllowedOrigin("https://wiki-sprint.com");
+        configuration.addAllowedOrigin("https://www.wiki-sprint.com");
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
         configuration.setAllowCredentials(true);
