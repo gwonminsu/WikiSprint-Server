@@ -118,7 +118,7 @@ class DonationControllerTest {
                         .source("kofi")
                         .type("Donation")
                         .supporterName(null)
-                        .message(null)
+                        .message("anonymous hello")
                         .amount("2")
                         .currency("USD")
                         .isAnonymous(true)
@@ -129,6 +129,7 @@ class DonationControllerTest {
         mockMvc.perform(post("/donations"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].donationId").value("DON-2"))
-                .andExpect(jsonPath("$.data[0].isAnonymous").value(true));
+                .andExpect(jsonPath("$.data[0].isAnonymous").value(true))
+                .andExpect(jsonPath("$.data[0].message").value("anonymous hello"));
     }
 }
