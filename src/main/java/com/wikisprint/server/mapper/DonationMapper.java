@@ -4,6 +4,7 @@ import com.wikisprint.server.vo.DonationVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 // 후원 MyBatis Mapper
@@ -21,6 +22,8 @@ public interface DonationMapper {
     int confirmAccountTransferDonation(@Param("donationId") String donationId);
 
     List<DonationVO> selectLatestDonations(@Param("limit") int limit);
+
+    List<DonationVO> selectRecentDonations(@Param("receivedAfter") LocalDateTime receivedAfter);
 
     List<DonationVO> selectAllDonations();
 

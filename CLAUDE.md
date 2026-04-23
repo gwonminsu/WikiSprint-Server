@@ -168,7 +168,7 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 ### 보안 설정
 
-- CORS 허용: `http://localhost:5969` (프론트엔드)
+- CORS 허용: `http://localhost:5969`, `http://13.209.255.179:5969`, `https://main.d11crzf9vrq2hy.amplifyapp.com`, `https://wiki-sprint.com`, `https://www.wiki-sprint.com`
 - 공개 엔드포인트: `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`, `/donations/**`, `/webhook/**`
 - 보호된 엔드포인트: JWT Bearer 토큰 필요
 - 관리자 엔드포인트 (`/admin/**`): JWT 인증 + `AdminController.resolveAdmin()` DB 레벨 `is_admin` 이중 검증
@@ -327,6 +327,17 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 - 제목: `feat: 대표 변경사항 (vX.X.X)`
 
 ---
+
+## 최근 변경 메모 (v1.14.1)
+
+- CORS 허용 도메인에 `https://wiki-sprint.com`, `https://www.wiki-sprint.com`이 추가됐습니다 (`SecurityConfig`).
+- 익명 후원자(`is_anonymous=true`)의 메시지 마스킹이 제거됐습니다. 기존에는 `message`도 null로 처리했지만, 변경 후 `message`는 원본 그대로 반환되고 `supporterName`과 `accountProfileImgUrl`만 null 처리합니다 (`DonationService.toResponseDto`).
+
+## 최근 변경 메모 (v1.14.0)
+
+- 파일 저장 경로가 외부화됐습니다. `FileStorageUtil`이 삭제되고 `FileStorageService` 인터페이스 + `LocalFileStorageService` 구현체로 대체됐습니다 (`global/common/storage/`).
+- 저장 루트는 `app.storage.root: ${APP_STORAGE_ROOT:./storage}` 설정으로 관리합니다.
+- `AccountController`, `AccountService`는 `FileStorageUtil` 대신 `FileStorageService` 인터페이스에 의존합니다.
 
 ## 최근 변경 메모 (v1.13.0)
 

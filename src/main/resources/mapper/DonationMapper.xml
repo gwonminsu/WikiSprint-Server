@@ -113,6 +113,16 @@
         LIMIT #{limit}
     </select>
 
+    <select id="selectRecentDonations" resultMap="DonationResultMap">
+        SELECT
+            <include refid="DonationSelectColumns" />
+        FROM donations d
+        LEFT JOIN accounts a ON a.account_id = d.wikisprint_account_id
+        WHERE d.type != 'PendingTransfer'
+          AND d.received_at >= #{receivedAfter}
+        ORDER BY d.received_at DESC, d.created_at DESC
+    </select>
+
     <select id="selectAllDonations" resultMap="DonationResultMap">
         SELECT
             <include refid="DonationSelectColumns" />

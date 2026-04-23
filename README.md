@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.13.0-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.14.1-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -85,7 +85,8 @@ com.wikisprint.server/
     └── common/
         ├── auth/        # JwtTokenProvider, JwtAuthenticationFilter
         ├── status/      # 커스텀 예외 (FileException, UnauthorizedException)
-        ├── util/        # FileStorageUtil
+        ├── storage/     # FileStorageService (interface), LocalFileStorageService
+        ├── filter/      # SimpleRateLimitFilter
         └── GlobalExceptionHandler
 ```
 
@@ -339,7 +340,7 @@ google:
 
 | 설정 | 내용 |
 |------|------|
-| CORS 허용 오리진 | `http://localhost:5969` |
+| CORS 허용 오리진 | `http://localhost:5969`, `http://13.209.255.179:5969`, `https://main.d11crzf9vrq2hy.amplifyapp.com`, `https://wiki-sprint.com`, `https://www.wiki-sprint.com` |
 | 공개 엔드포인트 | `/auth/**`, `/error/**`, `/account/profile/image/**`, `/wiki/**`, `/ranking/**`, `/donations/**`, `/webhook/**` |
 | 보호 엔드포인트 | JWT Bearer 토큰 필요 |
 | 인증 헤더 | `Authorization: Bearer {access_token}` |

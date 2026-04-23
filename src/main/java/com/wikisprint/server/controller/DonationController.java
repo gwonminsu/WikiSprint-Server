@@ -31,6 +31,11 @@ public class DonationController {
         return ResponseEntity.ok(ApiResponse.success(donationService.getLatestDonations()));
     }
 
+    @PostMapping("/alerts/recent")
+    public ResponseEntity<ApiResponse<List<DonationResponseDTO>>> getRecentAlertDonations() {
+        return ResponseEntity.ok(ApiResponse.success(donationService.getRecentAlertDonations()));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<List<DonationResponseDTO>>> getAllDonations() {
         return ResponseEntity.ok(ApiResponse.success(donationService.getAllDonations()));

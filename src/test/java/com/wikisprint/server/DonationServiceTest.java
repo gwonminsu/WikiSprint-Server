@@ -152,6 +152,33 @@ class DonationServiceTest {
     }
 
     @Test
+    void getRecentAlertDonations_returnsDonationsAfterOneHourCutoff() {
+        DonationVO donation = new DonationVO();
+        donation.setDonationId("DON-RECENT");
+        donation.setSource("kofi");
+        donation.setType("Donation");
+        donation.setSupporterName("Recent");
+        donation.setMessage("recent hello");
+        donation.setAmountCents(500L);
+        donation.setCurrency("USD");
+        donation.setIsAnonymous(false);
+        donation.setReceivedAt(LocalDateTime.of(2026, 4, 20, 10, 0));
+
+        when(donationMapper.selectRecentDonations(any(LocalDateTime.class))).thenReturn(List.of(donation));
+
+        List<DonationResponseDTO> recentDonations = donationService.getRecentAlertDonations();
+
+        assertThat(recentDonations).hasSize(1);
+        assertThat(recentDonations.get(0).getDonationId()).isEqualTo("DON-RECENT");
+        assertThat(recentDonations.get(0).getMessage()).isEqualTo("recent hello");
+
+        ArgumentCaptor<LocalDateTime> captor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(donationMapper).selectRecentDonations(captor.capture());
+        assertThat(captor.getValue()).isBefore(LocalDateTime.now());
+        assertThat(captor.getValue()).isAfter(LocalDateTime.now().minusMinutes(70));
+    }
+
+    @Test
     void getDonationById_returnsNullWhenNoDonationExists() {
         when(donationMapper.selectDonationById(eq("DON-404"))).thenReturn(null);
 

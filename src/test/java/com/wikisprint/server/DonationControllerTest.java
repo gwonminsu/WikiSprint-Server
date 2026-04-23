@@ -111,6 +111,28 @@ class DonationControllerTest {
     }
 
     @Test
+    void getRecentAlertDonations_returnsRecentDonationList() throws Exception {
+        when(donationService.getRecentAlertDonations()).thenReturn(List.of(
+                DonationResponseDTO.builder()
+                        .donationId("DON-RECENT")
+                        .source("kofi")
+                        .type("Donation")
+                        .supporterName("Recent")
+                        .message("recent hello")
+                        .amount("5")
+                        .currency("USD")
+                        .isAnonymous(false)
+                        .receivedAt(LocalDateTime.of(2026, 4, 20, 10, 0))
+                        .build()
+        ));
+
+        mockMvc.perform(post("/donations/alerts/recent"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].donationId").value("DON-RECENT"))
+                .andExpect(jsonPath("$.data[0].message").value("recent hello"));
+    }
+
+    @Test
     void getAllDonations_returnsAllDonationList() throws Exception {
         when(donationService.getAllDonations()).thenReturn(List.of(
                 DonationResponseDTO.builder()
