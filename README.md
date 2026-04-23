@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.14.1-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.15.0-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -385,3 +385,30 @@ google:
 **WikiSprint** — Built with ❤️ using Spring Boot & PostgreSQL
 
 </div>
+---
+
+## 🆕 v1.15.0 문서 메모
+
+### 신고/관리 API
+
+- 공개 신고 API: `POST /api/reports`
+- 관리자 계정 API:
+  - `POST /api/admin/accounts/list`
+  - `POST /api/admin/accounts/reports/pending-count`
+  - `POST /api/admin/accounts/reports/summary`
+  - `POST /api/admin/accounts/reports/resolve`
+  - `POST /api/admin/accounts/censor-profile`
+  - `POST /api/admin/accounts/censor-nickname`
+  - `POST /api/admin/accounts/grant-admin`
+- 관리자 후원 API:
+  - `POST /api/admin/donations/reports/summary`
+  - `POST /api/admin/donations/reports/resolve`
+  - `POST /api/admin/donations/censor-supporter-name`
+  - `POST /api/admin/donations/censor-message`
+  - `POST /api/admin/donations/delete`
+
+### 스키마 메모
+
+- `donations.is_account_linked_display` 컬럼이 추가됐습니다.
+- `reports` 테이블과 인덱스 3종이 추가됐습니다.
+- 운영 DB는 전체 재초기화 대신 컬럼/테이블/인덱스만 별도 마이그레이션으로 적용해야 합니다.

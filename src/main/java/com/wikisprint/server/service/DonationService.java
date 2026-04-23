@@ -96,16 +96,18 @@ public class DonationService {
         boolean isAnonymous = !readBoolean(rootNode, "is_public", true);
         String email = readText(rootNode, "email");
         String kofiAccountId = firstNonBlank(readText(rootNode, "account_id"), readText(rootNode, "transaction_id"));
+        AccountVO linkedAccount = resolveWikiSprintAccount(email);
 
         DonationVO donation = new DonationVO();
         donation.setDonationId(generateDonationId());
         donation.setSource(SOURCE_KOFI);
         donation.setKofiAccountId(kofiAccountId);
-        donation.setWikisprintAccountId(resolveWikiSprintAccountId(email));
+        donation.setWikisprintAccountId(linkedAccount == null ? null : linkedAccount.getUuid());
         donation.setKofiMessageId(kofiMessageId);
         donation.setType(type);
         donation.setSupporterName(supporterName);
         donation.setMessage(message);
+        donation.setIsAccountLinkedDisplay(resolveAccountLinkedDisplay(linkedAccount, supporterName, isAnonymous));
         donation.setAmountCents(amountCents);
         donation.setCurrency(currency);
         donation.setIsAnonymous(isAnonymous);
@@ -142,6 +144,11 @@ public class DonationService {
         donation.setType(TYPE_PENDING_TRANSFER);
         donation.setSupporterName(resolvedSupporter.supporterName());
         donation.setMessage(message);
+        donation.setIsAccountLinkedDisplay(resolveAccountLinkedDisplay(
+                resolvedRequester,
+                resolvedSupporter.supporterName(),
+                resolvedSupporter.anonymous()
+        ));
         donation.setAmountCents(calculateAccountTransferAmount(coffeeCount));
         donation.setCurrency(CURRENCY_KRW);
         donation.setIsAnonymous(resolvedSupporter.anonymous());
@@ -245,6 +252,42 @@ public class DonationService {
         return response;
     }
 
+    @Transactional
+    public void censorSupporterName(String donationId) {
+        DonationVO donation = donationMapper.selectDonationById(donationId);
+        if (donation == null) {
+            throw new DonationNotFoundException();
+        }
+
+        String nextSupporterName = "BadNameSupporter";
+        if (Boolean.TRUE.equals(donation.getIsAccountLinkedDisplay())
+                && "BadNameSupporter".equals(donation.getSupporterName())
+                && !isBlank(donation.getAccountNick())) {
+            nextSupporterName = donation.getAccountNick().trim();
+        }
+
+        int updatedRows = donationMapper.updateSupporterName(donationId, nextSupporterName);
+        if (updatedRows <= 0) {
+            throw new DonationNotFoundException();
+        }
+    }
+
+    @Transactional
+    public void censorDonationMessage(String donationId) {
+        int updatedRows = donationMapper.updateDonationMessage(donationId, "censored content");
+        if (updatedRows <= 0) {
+            throw new DonationNotFoundException();
+        }
+    }
+
+    @Transactional
+    public void deleteDonation(String donationId) {
+        int deletedRows = donationMapper.deleteDonation(donationId);
+        if (deletedRows <= 0) {
+            throw new DonationNotFoundException();
+        }
+    }
+
     DonationResponseDTO toResponseDto(DonationVO donation) {
         boolean isAnonymous = Boolean.TRUE.equals(donation.getIsAnonymous());
 
@@ -258,6 +301,7 @@ public class DonationService {
                 .type(donation.getType())
                 .supporterName(isAnonymous ? null : donation.getSupporterName())
                 .message(donation.getMessage())
+                .isAccountLinkedDisplay(!isAnonymous && Boolean.TRUE.equals(donation.getIsAccountLinkedDisplay()))
                 .amount(formatAmount(donation.getAmountCents()))
                 .currency(donation.getCurrency())
                 .isAnonymous(isAnonymous)
@@ -275,6 +319,7 @@ public class DonationService {
                 .supporterName(donation.getSupporterName())
                 .remitterName(donation.getKofiAccountId())
                 .message(donation.getMessage())
+                .isAccountLinkedDisplay(Boolean.TRUE.equals(donation.getIsAccountLinkedDisplay()))
                 .coffeeCount(calculateCoffeeCount(donation.getAmountCents()))
                 .amount(formatAmount(donation.getAmountCents()))
                 .currency(donation.getCurrency())
@@ -351,13 +396,23 @@ public class DonationService {
         return value.trim();
     }
 
-    private String resolveWikiSprintAccountId(String email) {
+    private AccountVO resolveWikiSprintAccount(String email) {
         if (isBlank(email)) {
             return null;
         }
 
-        AccountVO account = accountMapper.selectAccountByEmail(email.trim());
-        return account == null ? null : account.getUuid();
+        return accountMapper.selectAccountByEmail(email.trim());
+    }
+
+    private boolean resolveAccountLinkedDisplay(AccountVO linkedAccount, String supporterName, boolean isAnonymous) {
+        if (isAnonymous || linkedAccount == null) {
+            return false;
+        }
+        if (isBlank(supporterName)) {
+            return true;
+        }
+
+        return !isBlank(linkedAccount.getNick()) && linkedAccount.getNick().trim().equals(supporterName.trim());
     }
 
     private boolean isTokenValid(String verificationToken) {

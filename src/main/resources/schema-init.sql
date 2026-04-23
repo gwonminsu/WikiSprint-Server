@@ -51,6 +51,7 @@ INSERT INTO target_words (word, difficulty, lang) VALUES
 ON CONFLICT (word, lang) DO NOTHING;
 
 -- Ko-fi 후원 이력 테이블
+DROP TABLE IF EXISTS reports;
 DROP TABLE IF EXISTS donations;
 CREATE TABLE donations (
     donation_id            VARCHAR(50)   PRIMARY KEY,
@@ -61,6 +62,7 @@ CREATE TABLE donations (
     type                   VARCHAR(30)   NOT NULL,
     supporter_name         VARCHAR(100),
     message                TEXT,
+    is_account_linked_display BOOLEAN   NOT NULL DEFAULT FALSE,
     amount_cents           BIGINT        NOT NULL CHECK (amount_cents >= 0),
     currency               VARCHAR(10)   NOT NULL,
     is_anonymous           BOOLEAN       NOT NULL DEFAULT FALSE,
@@ -76,6 +78,33 @@ CREATE INDEX IF NOT EXISTS idx_donations_source_received
 
 CREATE INDEX IF NOT EXISTS idx_donations_wikisprint_account
     ON donations (wikisprint_account_id);
+
+-- 사용자와 후원 신고 내역
+CREATE TABLE IF NOT EXISTS reports (
+    report_id           VARCHAR(50)   PRIMARY KEY,
+    reporter_account_id VARCHAR(50)   REFERENCES accounts(account_id) ON DELETE SET NULL,
+    target_type         VARCHAR(20)   NOT NULL,
+    target_account_id   VARCHAR(50)   REFERENCES accounts(account_id) ON DELETE SET NULL,
+    target_donation_id  VARCHAR(50)   REFERENCES donations(donation_id) ON DELETE SET NULL,
+    reason              VARCHAR(30)   NOT NULL,
+    detail              VARCHAR(100),
+    status              VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    resolved_by         VARCHAR(50)   REFERENCES accounts(account_id) ON DELETE SET NULL,
+    resolved_at         TIMESTAMP,
+    created_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_reports_target_type CHECK (target_type IN ('ACCOUNT', 'DONATION')),
+    CONSTRAINT chk_reports_reason CHECK (reason IN ('PROFILE_IMAGE', 'NICKNAME', 'DONATION_CONTENT', 'OTHER')),
+    CONSTRAINT chk_reports_status CHECK (status IN ('PENDING', 'RESOLVED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_status
+    ON reports (status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_reports_target_account
+    ON reports (target_account_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_reports_target_donation
+    ON reports (target_donation_id, status);
 
 -- 게임 기록 테이블 초기화 (DROP 후 재생성)
 DROP TABLE IF EXISTS game_records;

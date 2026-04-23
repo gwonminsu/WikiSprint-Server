@@ -21,6 +21,7 @@ public class PendingAccountTransferDonationResponseDTO {
     private String supporterName;
     private String remitterName;
     private String message;
+    private Boolean isAccountLinkedDisplay;
     private Integer coffeeCount;
     private String amount;
     private String currency;

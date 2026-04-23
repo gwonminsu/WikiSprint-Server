@@ -22,6 +22,7 @@ public class DonationResponseDTO {
     private String type;
     private String supporterName;
     private String message;
+    private Boolean isAccountLinkedDisplay;
     private String amount;
     private String currency;
     private Boolean isAnonymous;

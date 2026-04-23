@@ -355,3 +355,10 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 - `POST /record/share/{shareId}`는 유효한 공유 스냅샷만 반환하며, 실질적인 만료 판정은 조회 시점의 `expires_at > NOW()` 조건으로 처리합니다.
 - 만료된 공유 스냅샷 정리는 `SharedGameRecordCleanupScheduler`가 매시 정각 수행합니다.
 - 계정 탈퇴 처리에는 공유 스냅샷 정리도 함께 포함됩니다.
+## 최근 변경 메모 (v1.15.0)
+
+- 신고 시스템이 추가됐습니다. `ReportController`, `ReportService`, `ReportMapper(.xml)`, `ReportVO`가 계정/후원 신고 생성과 사유별 집계를 처리합니다.
+- 관리자 계정 관리 API가 추가됐습니다. `AdminAccountController`, `AdminAccountService`, `AccountMapper` 확장으로 신고된 계정 목록, 요약, 처리 완료, 프로필 검열, 닉네임 검열, 관리자 권한 부여를 제공합니다.
+- 관리자 후원 모더레이션이 확장됐습니다. `DonationAdminController`, `DonationService`에서 후원 신고 요약, 처리 완료, 서포터 네임 검열/복구 토글, 후원 내용 검열, 후원 삭제를 처리합니다.
+- 프로필 이미지 검열은 강한 블러 후 `censored-logo.png`를 중앙 오버레이하는 파이프라인을 사용합니다.
+- `donations.is_account_linked_display` 컬럼과 `reports` 테이블이 추가됐습니다. 계정 연동 후원 신고는 `ACCOUNT`로 집계하되 `target_donation_id`를 함께 보존해 후원 카드 요약에도 반영합니다.

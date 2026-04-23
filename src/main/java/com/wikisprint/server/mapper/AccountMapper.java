@@ -4,6 +4,8 @@ import com.wikisprint.server.vo.AccountVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface AccountMapper {
 
@@ -34,6 +36,21 @@ public interface AccountMapper {
     void updateNick(@Param("uuid") String uuid, @Param("nick") String nick);
     void updateProfileImgUrl(@Param("uuid") String uuid, @Param("profileImgUrl") String profileImgUrl);
     void updateNationality(@Param("uuid") String uuid, @Param("nationality") String nationality);
+    void updateIsAdmin(@Param("uuid") String uuid, @Param("isAdmin") boolean isAdmin);
+
+    List<AccountVO> selectAdminAccounts(
+            @Param("view") String view,
+            @Param("sortColumn") String sortColumn,
+            @Param("direction") String direction,
+            @Param("search") String search,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    long countAdminAccounts(
+            @Param("view") String view,
+            @Param("search") String search
+    );
 
     // 누적 통계 증가
     void incrementTotalGames(@Param("uuid") String uuid);

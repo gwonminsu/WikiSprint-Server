@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/ranking/**", "/api/ranking/**").permitAll()
                         .requestMatchers("/webhook/**", "/api/webhook/**").permitAll()
                         .requestMatchers("/donations/**", "/api/donations/**").permitAll()
+                        .requestMatchers("/reports/**", "/api/reports/**").permitAll()
                         // 공유 결과 조회 — 비로그인도 접근 가능
                         .requestMatchers("/record/share/**", "/api/record/share/**").permitAll()
                         // 관리자 전용 엔드포인트 — DB 레벨 검증은 AdminController.resolveAdmin()에서 처리
