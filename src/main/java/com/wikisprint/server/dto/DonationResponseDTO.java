@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DonationResponseDTO {
+    private String alertId;
     private String donationId;
     private String source;
     private String accountId;

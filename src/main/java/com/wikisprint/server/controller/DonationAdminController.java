@@ -1,6 +1,7 @@
 package com.wikisprint.server.controller;
 
 import com.wikisprint.server.dto.ApiResponse;
+import com.wikisprint.server.dto.DonationResponseDTO;
 import com.wikisprint.server.dto.PendingAccountTransferDonationResponseDTO;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
 import com.wikisprint.server.service.AuthService;
@@ -81,6 +82,32 @@ public class DonationAdminController {
             return ResponseEntity.ok(ApiResponse.message("국내 후원 확인이 완료되었습니다."));
         } catch (DonationNotFoundException exception) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("확인 대기 중인 국내 후원 요청을 찾을 수 없습니다."));
+        }
+    }
+
+    @PostMapping("/alert-replay")
+    public ResponseEntity<?> replayDonationAlert(
+            @RequestHeader(value = "Authorization", required = false) String accessToken,
+            @RequestBody Map<String, String> request
+    ) {
+        AccountVO admin = resolveAdmin(accessToken);
+        if (admin == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("관리자 권한이 필요합니다."));
+        }
+
+        String donationId = request.get("donationId");
+        if (!StringUtils.hasText(donationId)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("donationId는 필수입니다."));
+        }
+
+        try {
+            DonationResponseDTO replayDonation = donationService.createDonationAlertReplay(
+                    donationId.trim(),
+                    admin.getUuid()
+            );
+            return ResponseEntity.ok(ApiResponse.success(replayDonation, "후원 알림 재송출을 예약했습니다."));
+        } catch (DonationNotFoundException exception) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("재송출할 후원 내역을 찾을 수 없습니다."));
         }
     }
 }

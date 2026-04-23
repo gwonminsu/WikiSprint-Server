@@ -21,8 +21,11 @@ import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 // Ko-fi 웹훅 처리와 후원 조회를 담당한다.
 @Slf4j
@@ -38,6 +41,7 @@ public class DonationService {
     private static final String CURRENCY_KRW = "KRW";
     private static final int LATEST_DONATION_LIMIT = 20;
     private static final int RECENT_ALERT_HOURS = 1;
+    private static final int MAX_ALERT_REPLAY_EVENTS = 200;
     private static final int MAX_TYPE_LENGTH = 30;
     private static final int MAX_SUPPORTER_NAME_LENGTH = 100;
     private static final int MAX_MESSAGE_LENGTH = 2000;
@@ -49,6 +53,7 @@ public class DonationService {
 
     private final DonationMapper donationMapper;
     private final AccountMapper accountMapper;
+    private final Deque<DonationAlertReplayEvent> alertReplayEvents = new ConcurrentLinkedDeque<>();
 
     @Value("${kofi.webhook-enabled:false}")
     private boolean webhookEnabled;
@@ -165,6 +170,27 @@ public class DonationService {
     }
 
     @Transactional(readOnly = true)
+    public List<DonationResponseDTO> getRecentAlertReplayDonations() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(RECENT_ALERT_HOURS);
+        pruneAlertReplayEvents(cutoff);
+
+        List<DonationAlertReplayEvent> events = new ArrayList<>(alertReplayEvents);
+        return events.stream()
+                .filter(event -> !event.createdAt().isBefore(cutoff))
+                .map(event -> {
+                    DonationVO donation = donationMapper.selectDonationById(event.donationId());
+                    if (donation == null) {
+                        return null;
+                    }
+                    DonationResponseDTO response = toResponseDto(donation);
+                    response.setAlertId(event.alertId());
+                    return response;
+                })
+                .filter(response -> response != null)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<DonationResponseDTO> getAllDonations() {
         return donationMapper.selectAllDonations()
                 .stream()
@@ -197,10 +223,33 @@ public class DonationService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public DonationResponseDTO createDonationAlertReplay(String donationId, String adminAccountId) {
+        DonationVO donation = donationMapper.selectDonationById(donationId);
+        if (donation == null) {
+            throw new DonationNotFoundException();
+        }
+
+        DonationAlertReplayEvent event = new DonationAlertReplayEvent(
+                generateAlertReplayId(),
+                donationId,
+                adminAccountId,
+                LocalDateTime.now()
+        );
+        alertReplayEvents.addLast(event);
+        pruneAlertReplayEvents(LocalDateTime.now().minusHours(RECENT_ALERT_HOURS));
+        trimAlertReplayEvents();
+
+        DonationResponseDTO response = toResponseDto(donation);
+        response.setAlertId(event.alertId());
+        return response;
+    }
+
     DonationResponseDTO toResponseDto(DonationVO donation) {
         boolean isAnonymous = Boolean.TRUE.equals(donation.getIsAnonymous());
 
         return DonationResponseDTO.builder()
+                .alertId(donation.getDonationId())
                 .donationId(donation.getDonationId())
                 .source(donation.getSource())
                 .accountId(donation.getWikisprintAccountId())
@@ -236,6 +285,26 @@ public class DonationService {
 
     private String generateDonationId() {
         return "DON-" + Generators.timeBasedEpochGenerator().generate();
+    }
+
+    private String generateAlertReplayId() {
+        return "DAL-" + Generators.timeBasedEpochGenerator().generate();
+    }
+
+    private void pruneAlertReplayEvents(LocalDateTime cutoff) {
+        while (true) {
+            DonationAlertReplayEvent firstEvent = alertReplayEvents.peekFirst();
+            if (firstEvent == null || !firstEvent.createdAt().isBefore(cutoff)) {
+                return;
+            }
+            alertReplayEvents.pollFirst();
+        }
+    }
+
+    private void trimAlertReplayEvents() {
+        while (alertReplayEvents.size() > MAX_ALERT_REPLAY_EVENTS) {
+            alertReplayEvents.pollFirst();
+        }
     }
 
     private ResolvedSupporter resolveSupporter(AccountVO requester, String nickname, boolean requestedAnonymous) {
@@ -414,6 +483,14 @@ public class DonationService {
     }
 
     private record ResolvedSupporter(String supporterName, boolean anonymous) {
+    }
+
+    private record DonationAlertReplayEvent(
+            String alertId,
+            String donationId,
+            String adminAccountId,
+            LocalDateTime createdAt
+    ) {
     }
 
     public static class InvalidWebhookTokenException extends RuntimeException {
