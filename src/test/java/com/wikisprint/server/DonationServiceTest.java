@@ -123,7 +123,7 @@ class DonationServiceTest {
     }
 
     @Test
-    void getLatestDonations_masksAnonymousFields() {
+    void getLatestDonations_masksAnonymousIdentityButKeepsMessage() {
         DonationVO donation = new DonationVO();
         donation.setDonationId("DON-1");
         donation.setSource("kofi");
@@ -146,7 +146,7 @@ class DonationServiceTest {
         assertThat(latestDonations.get(0).getDonationId()).isEqualTo("DON-1");
         assertThat(latestDonations.get(0).getAccountId()).isEqualTo("ACC-1");
         assertThat(latestDonations.get(0).getSupporterName()).isNull();
-        assertThat(latestDonations.get(0).getMessage()).isNull();
+        assertThat(latestDonations.get(0).getMessage()).isEqualTo("hello");
         assertThat(latestDonations.get(0).getAccountProfileImgUrl()).isNull();
         assertThat(latestDonations.get(0).getAmount()).isEqualTo("5");
     }

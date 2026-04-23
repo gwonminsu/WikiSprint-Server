@@ -199,7 +199,7 @@ public class DonationService {
                 .accountProfileImgUrl(isAnonymous ? null : donation.getAccountProfileImgUrl())
                 .type(donation.getType())
                 .supporterName(isAnonymous ? null : donation.getSupporterName())
-                .message(isAnonymous ? null : donation.getMessage())
+                .message(donation.getMessage())
                 .amount(formatAmount(donation.getAmountCents()))
                 .currency(donation.getCurrency())
                 .isAnonymous(isAnonymous)
