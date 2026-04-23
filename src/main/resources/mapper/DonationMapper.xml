@@ -15,6 +15,7 @@
         <result property="type" column="type" />
         <result property="supporterName" column="supporter_name" />
         <result property="message" column="message" />
+        <result property="isAccountLinkedDisplay" column="is_account_linked_display" />
         <result property="amountCents" column="amount_cents" />
         <result property="currency" column="currency" />
         <result property="isAnonymous" column="is_anonymous" />
@@ -33,6 +34,7 @@
         d.type,
         d.supporter_name,
         d.message,
+        d.is_account_linked_display,
         d.amount_cents,
         d.currency,
         d.is_anonymous,
@@ -50,6 +52,7 @@
             type,
             supporter_name,
             message,
+            is_account_linked_display,
             amount_cents,
             currency,
             is_anonymous,
@@ -64,6 +67,7 @@
             #{type},
             #{supporterName},
             #{message},
+            #{isAccountLinkedDisplay},
             #{amountCents},
             #{currency},
             #{isAnonymous},
@@ -141,4 +145,27 @@
           AND d.type != 'PendingTransfer'
         LIMIT 1
     </select>
+
+    <!-- 후원 표시 이름을 검열한다. -->
+    <update id="updateSupporterName">
+        UPDATE donations
+        SET supporter_name = #{supporterName}
+        WHERE donation_id = #{donationId}
+          AND type != 'PendingTransfer'
+    </update>
+
+    <!-- 후원 메시지를 검열한다. -->
+    <update id="updateDonationMessage">
+        UPDATE donations
+        SET message = #{message}
+        WHERE donation_id = #{donationId}
+          AND type != 'PendingTransfer'
+    </update>
+
+    <!-- 후원 정보를 삭제한다. -->
+    <delete id="deleteDonation">
+        DELETE FROM donations
+        WHERE donation_id = #{donationId}
+          AND type != 'PendingTransfer'
+    </delete>
 </mapper>

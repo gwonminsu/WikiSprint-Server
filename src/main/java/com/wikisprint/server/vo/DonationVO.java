@@ -19,6 +19,7 @@ public class DonationVO {
     private String type;
     private String supporterName;
     private String message;
+    private Boolean isAccountLinkedDisplay;
     private Long amountCents;
     private String currency;
     private Boolean isAnonymous;

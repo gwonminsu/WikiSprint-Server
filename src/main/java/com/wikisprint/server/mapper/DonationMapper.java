@@ -28,4 +28,16 @@ public interface DonationMapper {
     List<DonationVO> selectAllDonations();
 
     DonationVO selectDonationById(@Param("donationId") String donationId);
+
+    int updateSupporterName(
+            @Param("donationId") String donationId,
+            @Param("supporterName") String supporterName
+    );
+
+    int updateDonationMessage(
+            @Param("donationId") String donationId,
+            @Param("message") String message
+    );
+
+    int deleteDonation(@Param("donationId") String donationId);
 }

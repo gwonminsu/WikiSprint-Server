@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wikisprint.server.mapper.ReportMapper">
+
+    <resultMap id="ReportResultMap" type="ReportVO">
+        <id property="reportId" column="report_id" />
+        <result property="reporterAccountId" column="reporter_account_id" />
+        <result property="targetType" column="target_type" />
+        <result property="targetAccountId" column="target_account_id" />
+        <result property="targetDonationId" column="target_donation_id" />
+        <result property="reason" column="reason" />
+        <result property="detail" column="detail" />
+        <result property="status" column="status" />
+        <result property="resolvedBy" column="resolved_by" />
+        <result property="resolvedAt" column="resolved_at" />
+        <result property="createdAt" column="created_at" />
+    </resultMap>
+
+    <insert id="insertReport" parameterType="ReportVO">
+        INSERT INTO reports (
+            report_id,
+            reporter_account_id,
+            target_type,
+            target_account_id,
+            target_donation_id,
+            reason,
+            detail,
+            status,
+            created_at
+        ) VALUES (
+            #{reportId},
+            #{reporterAccountId},
+            #{targetType},
+            #{targetAccountId},
+            #{targetDonationId},
+            #{reason},
+            #{detail},
+            #{status},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="countPendingReports" resultType="int">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE status = 'PENDING'
+    </select>
+
+    <select id="countPendingReportsByTargetType" resultType="int">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_type = #{targetType}
+    </select>
+
+    <select id="countPendingStandaloneAccountReports" resultType="int">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_type = 'ACCOUNT'
+          AND target_donation_id IS NULL
+    </select>
+
+    <select id="countPendingReportsByTarget" resultType="int">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_type = #{targetType}
+          AND (
+            (#{targetType} = 'ACCOUNT' AND target_account_id = #{targetId})
+            OR (#{targetType} = 'DONATION' AND target_donation_id = #{targetId})
+          )
+    </select>
+
+    <select id="countPendingStandaloneAccountReportsByTargetId" resultType="int">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_type = 'ACCOUNT'
+          AND target_donation_id IS NULL
+          AND target_account_id = #{targetAccountId}
+    </select>
+
+    <select id="countPendingReportsByDonationId" resultType="int">
+        SELECT COUNT(*)
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_donation_id = #{donationId}
+    </select>
+
+    <select id="selectPendingReportsByTarget" resultMap="ReportResultMap">
+        SELECT
+            report_id,
+            reporter_account_id,
+            target_type,
+            target_account_id,
+            target_donation_id,
+            reason,
+            detail,
+            status,
+            resolved_by,
+            resolved_at,
+            created_at
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_type = #{targetType}
+          AND (
+            (#{targetType} = 'ACCOUNT' AND target_account_id = #{targetId})
+            OR (#{targetType} = 'DONATION' AND target_donation_id = #{targetId})
+          )
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectPendingReportsByDonationId" resultMap="ReportResultMap">
+        SELECT
+            report_id,
+            reporter_account_id,
+            target_type,
+            target_account_id,
+            target_donation_id,
+            reason,
+            detail,
+            status,
+            resolved_by,
+            resolved_at,
+            created_at
+        FROM reports
+        WHERE status = 'PENDING'
+          AND target_donation_id = #{donationId}
+        ORDER BY created_at DESC
+    </select>
+
+    <delete id="deletePendingReportsByTarget">
+        DELETE FROM reports
+        WHERE status = 'PENDING'
+          AND target_type = #{targetType}
+          AND (
+            (#{targetType} = 'ACCOUNT' AND target_account_id = #{targetId})
+            OR (#{targetType} = 'DONATION' AND target_donation_id = #{targetId})
+          )
+    </delete>
+
+    <delete id="deletePendingReportsByDonationId">
+        DELETE FROM reports
+        WHERE status = 'PENDING'
+          AND target_donation_id = #{donationId}
+    </delete>
+
+</mapper>

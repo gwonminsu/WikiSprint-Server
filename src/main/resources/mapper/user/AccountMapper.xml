@@ -84,6 +84,73 @@
         WHERE account_id = #{uuid}
     </update>
 
+    <!-- 관리자 권한을 변경한다. -->
+    <update id="updateIsAdmin">
+        UPDATE accounts
+        SET is_admin = #{isAdmin}, updated_at = now()
+        WHERE account_id = #{uuid}
+    </update>
+
+    <sql id="AdminAccountSelectColumns">
+        account_id AS uuid,
+        google_id,
+        email,
+        nick,
+        profile_img_url,
+        nationality,
+        is_admin,
+        last_login,
+        created_at,
+        updated_at,
+        total_games,
+        total_clears,
+        total_abandons,
+        best_record,
+        deletion_requested_at
+    </sql>
+
+    <!-- 관리자 계정 관리 목록을 조회한다. sortColumn/direction은 서비스에서 화이트리스트 검증 후 전달한다. -->
+    <select id="selectAdminAccounts" resultType="AccountVO">
+        SELECT
+            <include refid="AdminAccountSelectColumns" />
+        FROM accounts a
+        WHERE 1 = 1
+        <if test="view == 'REPORTED'">
+            AND EXISTS (
+                SELECT 1
+                FROM reports r
+                WHERE r.status = 'PENDING'
+                  AND r.target_type = 'ACCOUNT'
+                  AND r.target_account_id = a.account_id
+            )
+        </if>
+        <if test="search != null and search != ''">
+            AND LOWER(a.nick) LIKE CONCAT('%', LOWER(#{search}), '%')
+        </if>
+        ORDER BY ${sortColumn} ${direction} NULLS LAST, a.created_at DESC
+        LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 관리자 계정 관리 목록의 전체 개수를 조회한다. -->
+    <select id="countAdminAccounts" resultType="long">
+        SELECT COUNT(*)
+        FROM accounts a
+        WHERE 1 = 1
+        <if test="view == 'REPORTED'">
+            AND EXISTS (
+                SELECT 1
+                FROM reports r
+                WHERE r.status = 'PENDING'
+                  AND r.target_type = 'ACCOUNT'
+                  AND r.target_account_id = a.account_id
+            )
+        </if>
+        <if test="search != null and search != ''">
+            AND LOWER(a.nick) LIKE CONCAT('%', LOWER(#{search}), '%')
+        </if>
+    </select>
+
     <!-- 게임 통계를 증가시킨다. -->
     <update id="incrementTotalGames" parameterType="string">
         UPDATE accounts SET total_games = total_games + 1 WHERE account_id = #{uuid}
