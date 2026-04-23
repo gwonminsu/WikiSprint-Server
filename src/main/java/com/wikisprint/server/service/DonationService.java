@@ -37,6 +37,7 @@ public class DonationService {
     private static final String TYPE_PENDING_TRANSFER = "PendingTransfer";
     private static final String CURRENCY_KRW = "KRW";
     private static final int LATEST_DONATION_LIMIT = 20;
+    private static final int RECENT_ALERT_HOURS = 1;
     private static final int MAX_TYPE_LENGTH = 30;
     private static final int MAX_SUPPORTER_NAME_LENGTH = 100;
     private static final int MAX_MESSAGE_LENGTH = 2000;
@@ -150,6 +151,14 @@ public class DonationService {
     @Transactional(readOnly = true)
     public List<DonationResponseDTO> getLatestDonations() {
         return donationMapper.selectLatestDonations(LATEST_DONATION_LIMIT)
+                .stream()
+                .map(this::toResponseDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DonationResponseDTO> getRecentAlertDonations() {
+        return donationMapper.selectRecentDonations(LocalDateTime.now().minusHours(RECENT_ALERT_HOURS))
                 .stream()
                 .map(this::toResponseDto)
                 .toList();
