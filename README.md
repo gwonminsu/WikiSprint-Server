@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.15.1-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.15.2-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 

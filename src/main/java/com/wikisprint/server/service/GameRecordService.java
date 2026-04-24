@@ -15,11 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
-// 게임 전적 서비스 - 시작/완료/포기와 공유 스냅샷 생성을 함께 관리한다.
-// 게임 전적 서비스 - 라이프사이클과 공유 스냅샷 생성을 함께 관리한다.
+// 게임 전적 서비스 - 시작/완료/포기 라이프사이클과 공유 스냅샷 생성을 함께 관리한다.
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -76,6 +78,9 @@ public class GameRecordService {
     // 게임 클리어 처리 - 랭킹 반영과 FIFO 정리를 포함한다.
     @Transactional
     public void completeRecord(String accountId, String recordId, String navPath, Long elapsedMs) {
+        GameRecordVO record = gameRecordMapper.selectRecordById(recordId, accountId);
+        validateCompletedPath(record, navPath);
+
         gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
         accountMapper.incrementTotalClears(accountId);
         // 최고 기록 갱신
@@ -83,7 +88,6 @@ public class GameRecordService {
 
         // 랭킹 삽입/갱신 시도
         try {
-            GameRecordVO record = gameRecordMapper.selectRecordById(recordId, accountId);
             if (record != null) {
                 Short diffCode = targetWordMapper.selectDifficultyByWord(record.getTargetWord());
                 int pathLength = parsePathLength(navPath);
@@ -107,11 +111,44 @@ public class GameRecordService {
     // navPath JSON 배열 문자열에서 경로 길이(방문 문서 수) 추출
     private int parsePathLength(String navPath) {
         try {
-            List<String> path = OBJECT_MAPPER.readValue(navPath, new TypeReference<>() {});
+            List<String> path = parseNavPath(navPath);
             return path.size();
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private List<String> parseNavPath(String navPath) throws Exception {
+        return OBJECT_MAPPER.readValue(navPath, new TypeReference<>() {});
+    }
+
+    private void validateCompletedPath(GameRecordVO record, String navPath) {
+        if (record == null) {
+            throw new IllegalArgumentException("완료 처리할 전적을 찾을 수 없습니다.");
+        }
+
+        final List<String> path;
+        try {
+            path = parseNavPath(navPath);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("완료 경로 형식이 올바르지 않습니다.");
+        }
+
+        if (path.isEmpty()) {
+            throw new IllegalArgumentException("완료 경로가 비어 있습니다.");
+        }
+
+        String lastArticle = path.get(path.size() - 1);
+        if (!normalizeTitle(lastArticle).equals(normalizeTitle(record.getTargetWord()))) {
+            throw new IllegalArgumentException("완료 경로의 마지막 문서가 제시어와 일치하지 않습니다.");
+        }
+    }
+
+    private String normalizeTitle(String title) {
+        return URLDecoder.decode(title, StandardCharsets.UTF_8)
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replace('_', ' ');
     }
 
     // 게임 포기 처리
@@ -146,6 +183,8 @@ public class GameRecordService {
         if (record == null || !"cleared".equals(record.getStatus()) || record.getElapsedMs() == null) {
             throw new IllegalArgumentException("공유할 수 있는 완료 전적이 없습니다.");
         }
+
+        validateCompletedPath(record, record.getNavPath());
 
         SharedGameRecordVO activeShare = sharedGameRecordMapper.selectActiveShareByRecordId(recordId);
         if (activeShare != null) {
