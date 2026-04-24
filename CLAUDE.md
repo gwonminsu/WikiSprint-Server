@@ -328,6 +328,12 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 ---
 
+## 최근 변경 메모 (v1.15.1)
+
+- `AccountService`의 프로필 이미지 검열은 8px 다운샘플 후 원본 크기 업스케일 기반으로 정리됐습니다. 추가 박스 블러 컨볼루션은 제거됐습니다.
+- `censored-logo.png`는 `@PostConstruct`에서 선로딩 후 캐시합니다. 검열 요청마다 리소스를 다시 읽지 않습니다.
+- 이번 패치는 신고/후원/계정 API 계약 변경 없이 프로필 검열 결과물의 안정성과 성능을 보정하는 범위입니다.
+
 ## 최근 변경 메모 (v1.14.1)
 
 - CORS 허용 도메인에 `https://wiki-sprint.com`, `https://www.wiki-sprint.com`이 추가됐습니다 (`SecurityConfig`).

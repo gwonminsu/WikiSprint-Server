@@ -10,6 +10,7 @@ import com.wikisprint.server.mapper.GameRecordMapper;
 import com.wikisprint.server.mapper.RankingMapper;
 import com.wikisprint.server.mapper.SharedGameRecordMapper;
 import com.wikisprint.server.vo.AccountVO;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +24,6 @@ import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.awt.image.ConvolveOp;
-import java.awt.image.Kernel;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -38,11 +37,11 @@ public class AccountService {
     private static final String PROFILE_CATEGORY = "profile";
     private static final int DELETION_BATCH_SIZE = 100;
     private static final int PROFILE_BLUR_LONG_EDGE = 8;
-    private static final int PROFILE_BLUR_KERNEL_SIZE = 21;
-    private static final int PROFILE_BLUR_PASSES = 6;
     private static final String CENSORED_LOGO_PATH = "images/censored-logo.png";
     private static final double CENSORED_LOGO_CANVAS_RATIO = 0.42;
     private static final int CENSORED_NICK_MAX_RETRY = 20;
+
+    private volatile BufferedImage cachedCensoredLogo;
 
     private final AccountMapper accountMapper;
     private final FileStorageService fileStorage;
@@ -52,6 +51,16 @@ public class AccountService {
     private final SharedGameRecordMapper sharedGameRecordMapper;
     private final DonationMapper donationMapper;
     private final NicknameGenerator nicknameGenerator;
+
+    @PostConstruct
+    public void initCensoredLogo() {
+        try {
+            ClassPathResource resource = new ClassPathResource(CENSORED_LOGO_PATH);
+            cachedCensoredLogo = ImageIO.read(resource.getInputStream());
+        } catch (IOException e) {
+            log.warn("검열 로고 이미지 초기화 실패: {}", e.getMessage());
+        }
+    }
 
     // 닉네임 변경
     @Transactional
@@ -142,7 +151,6 @@ public class AccountService {
     }
 
     // 로컬 프로필 이미지를 강한 블러 이미지로 교체한다.
-    @Transactional
     public String censorProfileImage(String accountUuid) throws IOException {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
@@ -254,12 +262,16 @@ public class AccountService {
     }
 
     private BufferedImage readCensoredLogo() throws IOException {
+        if (cachedCensoredLogo != null) {
+            return cachedCensoredLogo;
+        }
         ClassPathResource resource = new ClassPathResource(CENSORED_LOGO_PATH);
-        BufferedImage censoredLogo = ImageIO.read(resource.getInputStream());
-        if (censoredLogo == null) {
+        BufferedImage logo = ImageIO.read(resource.getInputStream());
+        if (logo == null) {
             throw new IOException("검열 로고 이미지를 읽을 수 없습니다.");
         }
-        return censoredLogo;
+        cachedCensoredLogo = logo;
+        return cachedCensoredLogo;
     }
 
     private void drawImageCover(Graphics2D graphics, BufferedImage image, int canvasWidth, int canvasHeight) {
@@ -296,34 +308,8 @@ public class AccountService {
         blurredGraphics.drawImage(smallImage, 0, 0, sourceWidth, sourceHeight, null);
         blurredGraphics.dispose();
 
-        return applyRepeatedBoxBlur(blurredImage);
-    }
-
-    private BufferedImage applyRepeatedBoxBlur(BufferedImage sourceImage) {
-        int kernelCellCount = PROFILE_BLUR_KERNEL_SIZE * PROFILE_BLUR_KERNEL_SIZE;
-        float[] kernelData = new float[kernelCellCount];
-        for (int index = 0; index < kernelCellCount; index++) {
-            kernelData[index] = 1.0f / kernelCellCount;
-        }
-
-        ConvolveOp blurOp = new ConvolveOp(
-                new Kernel(PROFILE_BLUR_KERNEL_SIZE, PROFILE_BLUR_KERNEL_SIZE, kernelData),
-                ConvolveOp.EDGE_NO_OP,
-                null
-        );
-
-        BufferedImage currentImage = sourceImage;
-        for (int pass = 0; pass < PROFILE_BLUR_PASSES; pass++) {
-            BufferedImage nextImage = new BufferedImage(
-                    sourceImage.getWidth(),
-                    sourceImage.getHeight(),
-                    BufferedImage.TYPE_INT_ARGB
-            );
-            blurOp.filter(currentImage, nextImage);
-            currentImage = nextImage;
-        }
-
-        return currentImage;
+        // 8px 다운샘플 후 원본 크기 BICUBIC 업스케일만으로 강한 모자이크 효과를 내므로 추가 컨볼루션 불필요
+        return blurredImage;
     }
 
     // 기존 프로필 이미지 파일 삭제 (내부용)
