@@ -328,6 +328,14 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 ---
 
+## 최근 변경 메모 (v1.15.2)
+
+- `GameRecordService`에 클리어 경로 검증이 추가됐습니다.
+  - `validateCompletedPath()`가 완료 저장(`completeRecord`)과 공유 스냅샷 생성(`createOrGetShareRecord`) 양쪽에서 `navPath` 마지막 문서가 `target_word`와 정규화 기준으로 일치하는지 확인합니다.
+  - `normalizeTitle()`은 `URLDecoder.decode` + `trim` + `toLowerCase(Locale.ROOT)` + 언더스코어→공백 치환을 적용해 프론트와 같은 비교 기준을 사용합니다.
+- `GameRecordServiceTest`(Mockito 기반)가 추가됐습니다.
+  - 경로 마지막 문서와 `target_word` 불일치 시 완료 저장과 공유 생성 모두 `IllegalArgumentException`으로 차단되는지, `gameRecordMapper.completeRecord` / `sharedGameRecordMapper.insertShareRecord` 같은 부작용이 발생하지 않는지 검증합니다.
+
 ## 최근 변경 메모 (v1.15.1)
 
 - `AccountService`의 프로필 이미지 검열은 8px 다운샘플 후 원본 크기 업스케일 기반으로 정리됐습니다. 추가 박스 블러 컨볼루션은 제거됐습니다.
