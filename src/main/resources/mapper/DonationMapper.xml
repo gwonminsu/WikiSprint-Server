@@ -82,9 +82,10 @@
         WHERE kofi_message_id = #{kofiMessageId}
     </select>
 
-    <update id="clearWikiSprintAccountIdByAccountId">
+    <update id="unlinkAccountByAccountId">
         UPDATE donations
-        SET wikisprint_account_id = NULL
+        SET wikisprint_account_id = NULL,
+            is_account_linked_display = FALSE
         WHERE wikisprint_account_id = #{accountId}
     </update>
 
