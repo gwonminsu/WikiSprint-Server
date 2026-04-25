@@ -113,6 +113,16 @@
           AND played_at &lt; NOW() - (#{thresholdMinutes} || ' minutes')::INTERVAL
     </update>
 
+    <!-- 계정의 최신 진행 중 전적 1건을 stale 기준으로 포기 처리 -->
+    <update id="abandonStaleLatestInProgressRecord">
+        UPDATE game_records
+        SET status = 'abandoned', last_article = NULL
+        WHERE record_id = #{recordId}
+          AND account_id = #{accountId}
+          AND status = 'in_progress'
+          AND played_at &lt; NOW() - (#{thresholdMinutes} || ' minutes')::INTERVAL
+    </update>
+
     <!-- [추가] 회원탈퇴 처리: 계정의 모든 게임 전적 삭제 -->
     <delete id="deleteAllByAccountId">
         DELETE FROM game_records WHERE account_id = #{accountId}

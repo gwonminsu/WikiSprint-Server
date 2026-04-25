@@ -123,6 +123,7 @@ POST /auth/cancel-deletion (credential: Google ID Token)
   - `last_article` VARCHAR(300) (in_progress 추적용)
   - `played_at`, `created_at` TIMESTAMP
   - CHECK (status IN ('in_progress', 'cleared', 'abandoned'))
+  - partial unique index: `uq_game_records_in_progress_per_account` — `status = 'in_progress'`일 때 계정당 1건만 허용
 - 테이블: `shared_game_records` (공유 전적 스냅샷)
   - `share_id` UUID PK
   - `record_id` VARCHAR(50) FK → game_records
@@ -230,7 +231,7 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 | 엔드포인트 | 설명 | 인증 |
 |---|---|---|
-| `POST /record/start` | 전적 생성 (in_progress), body: `{ targetWord, startDoc }` | JWT |
+| `POST /record/start` | 전적 생성 (in_progress), body: `{ targetWord, startDoc }` — 진행 중 게임이 있으면 409 | JWT |
 | `POST /record/update-path` | 경로 갱신, body: `{ recordId, navPath, lastArticle }` | JWT |
 | `POST /record/complete` | 클리어 처리, body: `{ recordId, navPath, elapsedMs }` | JWT |
 | `POST /record/abandon` | 포기 처리, body: `{ recordId }` | JWT |
@@ -239,6 +240,7 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 | `POST /record/share/{shareId}` | 유효한 공유 스냅샷 조회 | 공개 |
 
 **전적 라이프사이클:** `in_progress` → `cleared` or `abandoned`  
+**동시성 제약:** fresh `in_progress` 전적이 있으면 `/record/start`는 `409 CONFLICT`로 거절  
 **FIFO 정책:** 계정당 터미널 전적(cleared/abandoned) 최대 5건 유지  
 **stale 정리:** `/record/list` 호출 시 60분 경과 `in_progress` 자동 `abandoned` 전환
 
@@ -327,6 +329,13 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 - 제목: `feat: 대표 변경사항 (vX.X.X)`
 
 ---
+
+## 최근 변경 메모 (v1.15.3)
+
+- `game_records`는 `status = 'in_progress'` 조건에서 계정당 1건만 허용합니다. `schema-init.sql`에 partial unique index가 추가됐습니다.
+- `POST /record/start`는 fresh 진행 중 전적이 있으면 `ConflictException` 기반 `409 CONFLICT`를 반환합니다. stale 전적만 자동 포기 후 새 게임을 시작합니다.
+- `GameRecordService.completeRecord()`와 `abandonRecord()`는 실제 상태 전이가 성공한 경우에만 통계, 최고 기록, 랭킹, FIFO 정리를 반영합니다.
+- `GameRecordServiceTest`는 중복 완료/포기 no-op과 진행 중 게임 중복 시작 차단 케이스를 검증합니다.
 
 ## 최근 변경 메모 (v1.15.2)
 

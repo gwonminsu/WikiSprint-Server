@@ -2,6 +2,7 @@ package com.wikisprint.server.controller;
 
 import com.wikisprint.server.dto.ApiResponse;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
+import com.wikisprint.server.global.common.status.ConflictException;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.service.GameRecordService;
 import com.wikisprint.server.vo.AccountVO;
@@ -62,6 +63,9 @@ public class GameRecordController {
             Map<String, Object> data = new HashMap<>();
             data.put("recordId", record.getRecordId());
             return ResponseEntity.ok(ApiResponse.success(data, "전적 생성 완료"));
+        } catch (ConflictException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("전적 생성 중 오류가 발생했습니다."));

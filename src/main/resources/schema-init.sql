@@ -125,6 +125,10 @@ CREATE TABLE game_records (
 CREATE INDEX idx_game_records_account
     ON game_records (account_id, played_at DESC);
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_game_records_in_progress_per_account
+    ON game_records (account_id)
+    WHERE status = 'in_progress';
+
 -- 공유 기록 스냅샷 테이블
 CREATE TABLE IF NOT EXISTS shared_game_records (
     share_id         VARCHAR(50)   NOT NULL PRIMARY KEY,           -- 공유용 UUID 문자열

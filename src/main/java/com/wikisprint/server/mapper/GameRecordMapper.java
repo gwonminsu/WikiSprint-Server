@@ -22,7 +22,7 @@ public interface GameRecordMapper {
     );
 
     /** 게임 클리어 처리 (cleared 상태로 전환) */
-    void completeRecord(
+    int completeRecord(
             @Param("recordId") String recordId,
             @Param("accountId") String accountId,
             @Param("navPath") String navPath,
@@ -30,7 +30,7 @@ public interface GameRecordMapper {
     );
 
     /** 게임 포기 처리 (abandoned 상태로 전환) */
-    void abandonRecord(
+    int abandonRecord(
             @Param("recordId") String recordId,
             @Param("accountId") String accountId
     );
@@ -49,6 +49,13 @@ public interface GameRecordMapper {
 
     /** stale in_progress 전적을 abandoned로 일괄 전환 (thresholdMinutes 경과분) */
     int abandonStaleRecords(
+            @Param("accountId") String accountId,
+            @Param("thresholdMinutes") int thresholdMinutes
+    );
+
+    /** 최신 진행 중 전적 1건이 stale일 때만 abandoned로 전환 */
+    int abandonStaleLatestInProgressRecord(
+            @Param("recordId") String recordId,
             @Param("accountId") String accountId,
             @Param("thresholdMinutes") int thresholdMinutes
     );

@@ -7,12 +7,14 @@ import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.GameRecordMapper;
 import com.wikisprint.server.mapper.SharedGameRecordMapper;
 import com.wikisprint.server.mapper.TargetWordMapper;
+import com.wikisprint.server.global.common.status.ConflictException;
 import com.wikisprint.server.vo.AccountVO;
 import com.wikisprint.server.vo.GameRecordVO;
 import com.wikisprint.server.vo.SharedGameRecordVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLDecoder;
@@ -31,6 +33,7 @@ public class GameRecordService {
     private static final int MAX_RECORDS = 5;
     private static final int STALE_THRESHOLD_MINUTES = 60;
     private static final int SHARE_EXPIRE_HOURS = 24;
+    private static final String START_CONFLICT_MESSAGE = "이미 다른 창 또는 탭에서 진행 중인 게임이 있습니다. 먼저 해당 게임을 마무리해 주세요.";
 
     private final GameRecordMapper gameRecordMapper;
     private final SharedGameRecordMapper sharedGameRecordMapper;
@@ -41,32 +44,40 @@ public class GameRecordService {
     // 게임 시작 시 in_progress 전적 생성
     @Transactional
     public GameRecordVO startRecord(String accountId, String targetWord, String startDoc) {
-        // 기존 in_progress 전적 자동 포기 처리
         GameRecordVO existing = gameRecordMapper.selectInProgressRecord(accountId);
         if (existing != null) {
-            gameRecordMapper.abandonRecord(existing.getRecordId(), accountId);
-            accountMapper.incrementTotalAbandons(accountId);
-            gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
+            int abandoned = gameRecordMapper.abandonStaleLatestInProgressRecord(
+                    existing.getRecordId(),
+                    accountId,
+                    STALE_THRESHOLD_MINUTES
+            );
+            if (abandoned > 0) {
+                accountMapper.incrementTotalAbandons(accountId);
+                gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
+            } else {
+                throw new ConflictException(START_CONFLICT_MESSAGE);
+            }
         }
 
-        // 새 전적 생성
-        String recordId = "REC-" + Generators.timeBasedEpochGenerator().generate().toString();
-        String initialNavPath = "[\"" + startDoc.replace("\"", "\\\"") + "\"]";
+        try {
+            String recordId = "REC-" + Generators.timeBasedEpochGenerator().generate().toString();
+            String initialNavPath = "[\"" + startDoc.replace("\"", "\\\"") + "\"]";
 
-        GameRecordVO record = new GameRecordVO();
-        record.setRecordId(recordId);
-        record.setAccountId(accountId);
-        record.setTargetWord(targetWord);
-        record.setStartDoc(startDoc);
-        record.setNavPath(initialNavPath);
-        record.setLastArticle(startDoc);
-        record.setPlayedAt(LocalDateTime.now());
+            GameRecordVO record = new GameRecordVO();
+            record.setRecordId(recordId);
+            record.setAccountId(accountId);
+            record.setTargetWord(targetWord);
+            record.setStartDoc(startDoc);
+            record.setNavPath(initialNavPath);
+            record.setLastArticle(startDoc);
+            record.setPlayedAt(LocalDateTime.now());
 
-        gameRecordMapper.insertRecord(record);
-        // 누적 게임 수 증가
-        accountMapper.incrementTotalGames(accountId);
-
-        return record;
+            gameRecordMapper.insertRecord(record);
+            accountMapper.incrementTotalGames(accountId);
+            return record;
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException(START_CONFLICT_MESSAGE);
+        }
     }
 
     // 문서 이동 시 경로 업데이트 (in_progress 상태에서만 적용)
@@ -81,7 +92,12 @@ public class GameRecordService {
         GameRecordVO record = gameRecordMapper.selectRecordById(recordId, accountId);
         validateCompletedPath(record, navPath);
 
-        gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
+        int completed = gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
+        if (completed == 0) {
+            log.debug("이미 종료된 전적의 클리어 요청을 무시합니다. accountId={}, recordId={}", accountId, recordId);
+            return;
+        }
+
         accountMapper.incrementTotalClears(accountId);
         // 최고 기록 갱신
         accountMapper.updateBestRecord(accountId, elapsedMs);
@@ -154,7 +170,11 @@ public class GameRecordService {
     // 게임 포기 처리
     @Transactional
     public void abandonRecord(String accountId, String recordId) {
-        gameRecordMapper.abandonRecord(recordId, accountId);
+        int abandoned = gameRecordMapper.abandonRecord(recordId, accountId);
+        if (abandoned == 0) {
+            log.debug("이미 종료된 전적의 포기 요청을 무시합니다. accountId={}, recordId={}", accountId, recordId);
+            return;
+        }
         accountMapper.incrementTotalAbandons(accountId);
         gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
     }

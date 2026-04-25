@@ -49,67 +49,67 @@ public class AccountService {
             ClassPathResource resource = new ClassPathResource(CENSORED_LOGO_PATH);
             cachedCensoredLogo = ImageIO.read(resource.getInputStream());
         } catch (IOException e) {
-            log.warn("寃??濡쒓퀬 ?대?吏 珥덇린???ㅽ뙣: {}", e.getMessage());
+            log.warn("검열 로고 이미지 초기화 실패: {}", e.getMessage());
         }
     }
 
-    // ?됰꽕??蹂寃?
+    // 닉네임 변경
     @Transactional
     public void updateNick(String accountUuid, String newNick) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         if (account.getNick().equals(newNick)) {
-            throw new IllegalArgumentException("?꾩옱 ?됰꽕?꾧낵 ?숈씪?⑸땲??");
+            throw new IllegalArgumentException("현재 닉네임과 동일합니다.");
         }
 
         if (accountMapper.checkExistedNick(newNick)) {
-            throw new IllegalArgumentException("?대? ?ъ슜 以묒씤 ?됰꽕?꾩엯?덈떎.");
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
 
         accountMapper.updateNick(accountUuid, newNick);
         log.info("UPDATE account nick: {} -> {}", account.getNick(), newNick);
     }
 
-    // 援?쟻 蹂寃?(null ?덉슜 - 臾닿뎅??蹂듭썝)
+    // 국적 변경 (null 허용 - 미등록으로 복원)
     @Transactional
     public void updateNationality(String accountUuid, String nationality) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         if (nationality != null && nationality.length() != 2) {
-            throw new IllegalArgumentException("?좏슚?섏? ?딆? 援?쟻 肄붾뱶?낅땲??");
+            throw new IllegalArgumentException("유효하지 않은 국적 코드입니다.");
         }
 
         accountMapper.updateNationality(accountUuid, nationality);
         log.info("UPDATE account nationality: {} -> {}", account.getNationality(), nationality);
     }
 
-    // ?꾨줈???대?吏 ?낅줈??蹂寃?
+    // 프로필 이미지 업로드/변경
     @Transactional
     public String updateProfileImage(String accountUuid, MultipartFile file) throws IOException {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         fileStorage.validateFile(file);
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new FileException("?대?吏 ?뚯씪留??낅줈??媛?ν빀?덈떎.");
+            throw new FileException("이미지 파일만 업로드 가능합니다.");
         }
 
-        // 湲곗〈 ?꾨줈???대?吏 ??젣
+        // 기존 프로필 이미지 삭제
         if (account.getProfileImgUrl() != null && !account.getProfileImgUrl().isEmpty()) {
             deleteExistingProfileFile(accountUuid, account.getProfileImgUrl());
         }
 
-        // ???뚯씪 ???
+        // 새 파일 저장
         String fileId = "FIL-" + Generators.timeBasedEpochGenerator().generate().toString();
         String extension = fileStorage.getFileExtension(file.getOriginalFilename());
         String storedName = fileId + (extension.isEmpty() ? "" : "." + extension);
@@ -124,16 +124,16 @@ public class AccountService {
         return uri;
     }
 
-    // ?꾨줈???대?吏 ?쒓굅
+    // 프로필 이미지 제거
     @Transactional
     public void removeProfileImage(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         if (account.getProfileImgUrl() == null || account.getProfileImgUrl().isEmpty()) {
-            throw new IllegalArgumentException("?쒓굅???꾨줈???대?吏媛 ?놁뒿?덈떎.");
+            throw new IllegalArgumentException("제거할 프로필 이미지가 없습니다.");
         }
 
         deleteExistingProfileFile(accountUuid, account.getProfileImgUrl());
@@ -141,25 +141,25 @@ public class AccountService {
         log.info("REMOVE account profile_img_url: {}", accountUuid);
     }
 
-    // 濡쒖뺄 ?꾨줈???대?吏瑜?媛뺥븳 釉붾윭 ?대?吏濡?援먯껜?쒕떎.
+    // 로컬 프로필 이미지를 강한 블러 이미지로 교체한다.
     public String censorProfileImage(String accountUuid) throws IOException {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         String profileImgUrl = account.getProfileImgUrl();
         if (profileImgUrl == null || profileImgUrl.isBlank()) {
-            throw new IllegalArgumentException("寃?댄븷 ?꾨줈???대?吏媛 ?놁뒿?덈떎.");
+            throw new IllegalArgumentException("검열할 프로필 이미지가 없습니다.");
         }
         if (profileImgUrl.startsWith("http://") || profileImgUrl.startsWith("https://")) {
-            throw new IllegalArgumentException("?몃? ?꾨줈???대?吏???쒕쾭?먯꽌 寃?댄븷 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("외부 프로필 이미지는 서버에서 검열할 수 없습니다.");
         }
 
         Path sourcePath = Path.of(fileStorage.getStorageRoot(), profileImgUrl).normalize();
         BufferedImage sourceImage = ImageIO.read(sourcePath.toFile());
         if (sourceImage == null) {
-            throw new IllegalArgumentException("?꾨줈???대?吏 ?뚯씪???쎌쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("프로필 이미지 파일을 읽을 수 없습니다.");
         }
 
         BufferedImage censoredImage = createCensoredProfileImage(sourceImage);
@@ -167,7 +167,7 @@ public class AccountService {
         String storagePath = fileStorage.buildStoragePath(accountUuid, accountUuid, PROFILE_CATEGORY, null);
         File storageDirectory = new File(storagePath);
         if (!storageDirectory.exists() && !storageDirectory.mkdirs()) {
-            throw new IOException("?꾨줈???대?吏 ???寃쎈줈瑜?留뚮뱾 ???놁뒿?덈떎.");
+            throw new IOException("프로필 이미지 저장 경로를 만들 수 없습니다.");
         }
 
         File targetFile = new File(storageDirectory, storedName);
@@ -180,16 +180,16 @@ public class AccountService {
         return uri;
     }
 
-    // 怨꾩젙 ?됰꽕?꾩쓣 ?좉퇋 媛??湲곕낯 ?됰꽕???뺤떇?쇰줈 寃?댄븳??
+    // 계정 닉네임을 고정 검열 문자열 형식으로 교체한다.
     @Transactional
     public String censorNick(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         for (int attempt = 0; attempt < CENSORED_NICK_MAX_RETRY; attempt++) {
-            String nick = "?좑툘" + nicknameGenerator.generateUniqueNickname(accountMapper) + "?좑툘";
+            String nick = "검열-" + nicknameGenerator.generateUniqueNickname(accountMapper) + "-검열";
             if (accountMapper.checkExistedNick(nick)) {
                 continue;
             }
@@ -199,18 +199,18 @@ public class AccountService {
                 log.info("CENSOR account nick: {} -> {}", accountUuid, nick);
                 return nick;
             } catch (DuplicateKeyException exception) {
-                log.warn("寃???됰꽕??以묐났, ?ъ떆?? {}", nick);
+                log.warn("검열용 닉네임 중복, 재시도: {}", nick);
             }
         }
 
-        throw new IllegalStateException("寃???됰꽕?꾩쓣 ?앹꽦?????놁뒿?덈떎.");
+        throw new IllegalStateException("검열용 닉네임을 생성할 수 없습니다.");
     }
 
     @Transactional
     public void grantAdmin(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         accountMapper.updateIsAdmin(accountUuid, true);
@@ -259,7 +259,7 @@ public class AccountService {
         ClassPathResource resource = new ClassPathResource(CENSORED_LOGO_PATH);
         BufferedImage logo = ImageIO.read(resource.getInputStream());
         if (logo == null) {
-            throw new IOException("寃??濡쒓퀬 ?대?吏瑜??쎌쓣 ???놁뒿?덈떎.");
+            throw new IOException("검열 로고 이미지를 읽을 수 없습니다.");
         }
         cachedCensoredLogo = logo;
         return cachedCensoredLogo;
@@ -299,11 +299,11 @@ public class AccountService {
         blurredGraphics.drawImage(smallImage, 0, 0, sourceWidth, sourceHeight, null);
         blurredGraphics.dispose();
 
-        // 8px ?ㅼ슫?섑뵆 ???먮낯 ?ш린 BICUBIC ?낆뒪耳?쇰쭔?쇰줈 媛뺥븳 紐⑥옄?댄겕 ?④낵瑜??대?濡?異붽? 而⑤낵猷⑥뀡 遺덊븘??
+        // 8px 다운스케일 후 원본 크기 BICUBIC 업스케일만으로 강한 모자이크 효과를 얻으므로 추가 컨볼루션은 불필요하다.
         return blurredImage;
     }
 
-    // 湲곗〈 ?꾨줈???대?吏 ?뚯씪 ??젣 (?대???
+    // 기존 프로필 이미지 파일 삭제 (실패 무시)
     private void deleteExistingProfileFile(String accountUuid, String profileImgUrl) {
         try {
             String fullPath = fileStorage.getStorageRoot() + "/" + profileImgUrl;
@@ -314,18 +314,18 @@ public class AccountService {
         }
     }
 
-    // 怨꾩젙 議고쉶
+    // 계정 조회
     @Transactional(readOnly = true)
     public AccountVO getAccountByUuid(String accountUuid) {
         return accountMapper.selectAccountByUuid(accountUuid);
     }
 
-    // ?뚯썝?덊눜 ?붿껌 (7???좎삁)
+    // 회원탈퇴 요청 (7일 유예)
     @Transactional
     public void requestDeletion(String accountUuid) {
         AccountVO account = accountMapper.selectAccountByUuid(accountUuid);
         if (account == null) {
-            throw new IllegalArgumentException("怨꾩젙??李얠쓣 ???놁뒿?덈떎.");
+            throw new IllegalArgumentException("계정을 찾을 수 없습니다.");
         }
 
         accountMapper.updateDeletionRequestedAt(accountUuid, LocalDateTime.now());

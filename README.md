@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.15.2-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.15.3-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -127,7 +127,7 @@ com.wikisprint.server/
 
 | 엔드포인트 | 메서드 | 인증 | 설명 |
 |-----------|--------|------|------|
-| `/api/record/start` | POST | ✅ Bearer | 게임 전적 시작 |
+| `/api/record/start` | POST | ✅ Bearer | 게임 전적 시작 (`in_progress` 존재 시 409) |
 | `/api/record/update-path` | POST | ✅ Bearer | 이동 경로 갱신 |
 | `/api/record/complete` | POST | ✅ Bearer | 클리어 처리 |
 | `/api/record/abandon` | POST | ✅ Bearer | 포기 처리 |
@@ -207,6 +207,7 @@ com.wikisprint.server/
 | `played_at` | TIMESTAMP | 플레이 시각 |
 
 > 최근 전적 조회에서는 `target_words`를 참조해 `difficulty`를 함께 응답합니다.
+> 계정당 fresh `in_progress` 전적은 1건만 허용되며, 중복 시작 시 `409 CONFLICT`를 반환합니다.
 
 ### shared_game_records
 
@@ -386,6 +387,15 @@ google:
 
 </div>
 ---
+
+## 🆕 v1.15.3 문서 메모
+
+### 전적 동시성 제어
+
+- `game_records`는 `status = 'in_progress'` 조건에서 계정당 1건만 허용합니다.
+- `POST /api/record/start`는 fresh 진행 중 전적이 남아 있으면 새 게임을 만들지 않고 `409 CONFLICT`로 거절합니다.
+- stale 진행 중 전적만 자동 포기 후 새 게임을 허용합니다.
+- `complete` / `abandon` 중복 요청은 실제 상태 전이가 성공한 첫 요청에만 통계와 랭킹 후처리를 반영합니다.
 
 ## 🆕 v1.15.1 문서 메모
 

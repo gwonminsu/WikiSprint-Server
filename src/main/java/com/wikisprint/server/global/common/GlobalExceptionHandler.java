@@ -1,6 +1,7 @@
 package com.wikisprint.server.global.common;
 
 import com.wikisprint.server.dto.ApiResponse;
+import com.wikisprint.server.global.common.status.ConflictException;
 import com.wikisprint.server.global.common.status.FileException;
 import com.wikisprint.server.global.common.status.UnauthorizedException;
 import org.slf4j.Logger;
@@ -27,6 +28,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleFileException(FileException e) {
         log.warn("FileException: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
+    }
+
+    // 충돌 상태 (동시 시작 등)
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConflictException(ConflictException e) {
+        log.warn("ConflictException: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(e.getMessage()));
     }
 
     // 잘못된 요청 (입력값 검증 실패 등)
