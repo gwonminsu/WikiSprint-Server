@@ -152,7 +152,7 @@ class DonationServiceTest {
     }
 
     @Test
-    void getRecentAlertDonations_returnsDonationsAfterOneHourCutoff() {
+    void getRecentAlertDonations_returnsDonationsAfterTenMinuteCutoff() {
         DonationVO donation = new DonationVO();
         donation.setDonationId("DON-RECENT");
         donation.setSource("kofi");
@@ -175,7 +175,7 @@ class DonationServiceTest {
         ArgumentCaptor<LocalDateTime> captor = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(donationMapper).selectRecentDonations(captor.capture());
         assertThat(captor.getValue()).isBefore(LocalDateTime.now());
-        assertThat(captor.getValue()).isAfter(LocalDateTime.now().minusMinutes(70));
+        assertThat(captor.getValue()).isAfter(LocalDateTime.now().minusMinutes(11));
     }
 
     @Test

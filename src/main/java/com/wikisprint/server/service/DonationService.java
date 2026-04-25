@@ -40,7 +40,7 @@ public class DonationService {
     private static final String TYPE_PENDING_TRANSFER = "PendingTransfer";
     private static final String CURRENCY_KRW = "KRW";
     private static final int LATEST_DONATION_LIMIT = 20;
-    private static final int RECENT_ALERT_HOURS = 1;
+    private static final int RECENT_ALERT_MINUTES = 10;
     private static final int MAX_ALERT_REPLAY_EVENTS = 200;
     private static final int MAX_TYPE_LENGTH = 30;
     private static final int MAX_SUPPORTER_NAME_LENGTH = 100;
@@ -170,7 +170,7 @@ public class DonationService {
 
     @Transactional(readOnly = true)
     public List<DonationResponseDTO> getRecentAlertDonations() {
-        return donationMapper.selectRecentDonations(LocalDateTime.now().minusHours(RECENT_ALERT_HOURS))
+        return donationMapper.selectRecentDonations(LocalDateTime.now().minusMinutes(RECENT_ALERT_MINUTES))
                 .stream()
                 .map(this::toResponseDto)
                 .toList();
@@ -178,7 +178,7 @@ public class DonationService {
 
     @Transactional(readOnly = true)
     public List<DonationResponseDTO> getRecentAlertReplayDonations() {
-        LocalDateTime cutoff = LocalDateTime.now().minusHours(RECENT_ALERT_HOURS);
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(RECENT_ALERT_MINUTES);
         pruneAlertReplayEvents(cutoff);
 
         List<DonationAlertReplayEvent> events = new ArrayList<>(alertReplayEvents);
@@ -244,7 +244,7 @@ public class DonationService {
                 LocalDateTime.now()
         );
         alertReplayEvents.addLast(event);
-        pruneAlertReplayEvents(LocalDateTime.now().minusHours(RECENT_ALERT_HOURS));
+        pruneAlertReplayEvents(LocalDateTime.now().minusMinutes(RECENT_ALERT_MINUTES));
         trimAlertReplayEvents();
 
         DonationResponseDTO response = toResponseDto(donation);
