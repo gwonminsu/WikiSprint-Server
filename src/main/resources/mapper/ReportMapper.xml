@@ -148,4 +148,22 @@
           AND target_donation_id = #{donationId}
     </delete>
 
+    <update id="clearReporterAccountId">
+        UPDATE reports
+        SET reporter_account_id = NULL
+        WHERE reporter_account_id = #{accountId}
+    </update>
+
+    <update id="clearTargetAccountId">
+        UPDATE reports
+        SET target_account_id = NULL
+        WHERE target_account_id = #{accountId}
+    </update>
+
+    <update id="clearResolvedByAccountId">
+        UPDATE reports
+        SET resolved_by = NULL
+        WHERE resolved_by = #{accountId}
+    </update>
+
 </mapper>

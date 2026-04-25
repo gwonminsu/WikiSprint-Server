@@ -15,7 +15,7 @@ public interface DonationMapper {
 
     boolean existsByKofiMessageId(@Param("kofiMessageId") String kofiMessageId);
 
-    void clearWikiSprintAccountIdByAccountId(@Param("accountId") String accountId);
+    void unlinkAccountByAccountId(@Param("accountId") String accountId);
 
     List<DonationVO> selectPendingAccountTransfers();
 

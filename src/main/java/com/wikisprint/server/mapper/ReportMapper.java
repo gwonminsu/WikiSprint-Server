@@ -39,4 +39,10 @@ public interface ReportMapper {
     );
 
     int deletePendingReportsByDonationId(@Param("donationId") String donationId);
+
+    int clearReporterAccountId(@Param("accountId") String accountId);
+
+    int clearTargetAccountId(@Param("accountId") String accountId);
+
+    int clearResolvedByAccountId(@Param("accountId") String accountId);
 }
