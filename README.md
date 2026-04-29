@@ -35,6 +35,31 @@ Google OAuth 로그인, JWT 인증, 게임 기록 관리, 랭킹 집계, 공유 
 
 ---
 
+## 주요 처리 흐름
+
+### 인증 흐름
+
+1. 프론트엔드에서 Google ID Token 또는 OAuth code를 전달합니다.
+2. 서버가 Google 검증 후 계정을 조회하거나 신규 가입을 진행합니다.
+3. Access Token과 Refresh Token을 발급합니다.
+4. 보호 API는 JWT와 사용자 상태를 함께 검증합니다.
+
+### 게임 기록 흐름
+
+1. 게임 시작 시 진행 중 기록을 생성합니다.
+2. 문서 이동마다 경로를 업데이트합니다.
+3. 완료 시 소요 시간, 경로, 통계를 기록하고 랭킹 반영 대상이 됩니다.
+4. 포기 또는 stale 상태도 별도 정책으로 정리합니다.
+
+### 랭킹 및 후원 흐름
+
+- 랭킹은 기간별 집계 결과를 기반으로 Top 100을 제공합니다.
+- 최근 랭킹 알림 데이터는 프론트 오버레이가 소비할 수 있는 형태로 조회합니다.
+- 후원은 Ko-fi 웹훅과 국내 계좌이체 요청으로 수집합니다.
+- 후원 응답에는 `alertCreatedAt`을 포함해 프론트가 재생 기준 시점을 안정적으로 판단할 수 있게 합니다.
+
+---
+
 ## 기술 스택
 
 | 구분 | 사용 기술 |
@@ -83,6 +108,12 @@ com.wikisprint.server/
 | `DonationService` | Ko-fi 웹훅, 계좌이체 후원 요청, 관리자 후원 처리 |
 | `FileStorageService` | 프로필 이미지 저장 경로 추상화 |
 
+### 구현 메모
+
+- Controller, Service, Mapper 역할을 분리합니다.
+- 스키마나 응답 계약이 바뀌면 DTO, VO, Mapper XML, 직렬화 응답을 함께 확인해야 합니다.
+- 집계와 랭킹은 상태 전이 규칙이 중요하므로 조회 조건 변경 시 영향 범위를 넓게 봐야 합니다.
+
 ---
 
 ## API 개요
@@ -104,6 +135,25 @@ com.wikisprint.server/
 | 후원 | `/api/donations/**`, `/api/webhook/**` |
 | 관리자 | `/api/admin/**` |
 | 위키 조회 | `/api/wiki/**` |
+
+### 세부 엔드포인트 예시
+
+| 범주 | 경로 | 설명 |
+|---|---|---|
+| 인증 | `/api/auth/google` | Google 로그인 |
+| 인증 | `/api/auth/register` | 약관 동의 후 회원가입 |
+| 인증 | `/api/auth/reissue` | 토큰 재발급 |
+| 계정 | `/api/account/me` | 내 계정 조회 |
+| 계정 | `/api/account/profile/image/upload` | 프로필 이미지 업로드 |
+| 기록 | `/api/record/start` | 진행 중 기록 생성 |
+| 기록 | `/api/record/update-path` | 경로 업데이트 |
+| 기록 | `/api/record/complete` | 게임 완료 처리 |
+| 기록 | `/api/record/share` | 공유 링크 발급 |
+| 랭킹 | `/api/ranking/list` | 기간별 랭킹 조회 |
+| 랭킹 | `/api/ranking/alerts/recent` | 최근 랭킹 알림 조회 |
+| 후원 | `/api/donations/latest` | 최신 후원 목록 |
+| 후원 | `/api/donations/account-transfer/request` | 국내 후원 요청 |
+| 웹훅 | `/api/webhook/kofi` | Ko-fi 웹훅 수신 |
 
 ### 대표 기능 흐름
 
@@ -147,6 +197,13 @@ com.wikisprint.server/
 
 초기 스키마는 [schema-init.sql](./src/main/resources/schema-init.sql) 기준으로 관리합니다.
 
+### 데이터 해석 메모
+
+- `accounts`에는 최고 기록, 통계, 관리자 여부가 함께 들어갑니다.
+- `game_records`는 진행 중, 완료, 포기 상태를 함께 다룹니다.
+- `shared_game_records`는 실제 기록 ID를 외부에 직접 노출하지 않기 위한 공유 레이어입니다.
+- `donations`는 해외 후원과 국내 후원 요청을 한 흐름으로 관리합니다.
+
 ---
 
 ## 보안 및 운영 메모
@@ -176,6 +233,12 @@ com.wikisprint.server/
 - 후원 응답 DTO에는 `alertCreatedAt`이 포함됩니다.
 - 실시간 알림과 재생 알림은 이벤트 생성 시각을 그대로 사용합니다.
 - 일반 후원 목록 응답은 `receivedAt` 기반 시각을 fallback으로 제공합니다.
+
+### 운영 시 주의할 점
+
+- 관리자 전용 처리는 토큰 유무와 관리자 권한을 함께 확인해야 합니다.
+- 공개 경로라도 과도한 호출이 가능한 엔드포인트는 레이트 리밋 대상입니다.
+- 프로필 이미지 저장 경로는 운영 환경에서 반드시 외부 경로로 분리하는 편이 안전합니다.
 
 ---
 
@@ -231,6 +294,12 @@ spring:
       connection-init-sql: "SET search_path TO wikisprint"
 ```
 
+### 참고 파일
+
+- [PATCH.md](./PATCH.md): 버전별 변경 이력
+- [CLAUDE.md](./CLAUDE.md): 최근 작업 메모
+- [schema-init.sql](./src/main/resources/schema-init.sql): 초기 스키마
+
 ---
 
 ## 파일 저장소 메모
@@ -255,6 +324,7 @@ spring:
 
 - 변경 이력: [PATCH.md](./PATCH.md)
 - 작업 메모: [CLAUDE.md](./CLAUDE.md)
+- 스키마 기준: [schema-init.sql](./src/main/resources/schema-init.sql)
 
 ---
 
