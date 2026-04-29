@@ -330,6 +330,13 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 ---
 
+## 최근 변경 메모 (v1.16.0)
+
+- `POST /api/ranking/alerts/recent` (공개) 엔드포인트와 `RankingAlertService`가 추가됐습니다. in-memory `ConcurrentLinkedDeque`로 최근 10분 / 최대 200건의 알림을 보관합니다.
+- `RankingService.tryInsertRanking()`이 `daily`+`all` 버킷에서 클리어 전후 Top100을 비교해 `RankingAlertResponseDTO`(kind: new-entry/overtake)를 반환하도록 변경됐습니다.
+- `GameRecordService.completeRecord()`가 알림을 publish하고 반환하며, `GameRecordController`가 클리어 응답 본문에 `CompleteRecordResponseDTO { rankingAlert }`을 실어 보냅니다.
+- `RankingAlertResponseDTO`, `RankingAlertPlayerDTO`, `CompleteRecordResponseDTO` DTO가 추가됐습니다.
+
 ## 최근 변경 메모 (v1.15.3)
 
 - `game_records`는 `status = 'in_progress'` 조건에서 계정당 1건만 허용합니다. `schema-init.sql`에 partial unique index가 추가됐습니다.

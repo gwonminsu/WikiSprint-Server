@@ -1,6 +1,8 @@
 package com.wikisprint.server.controller;
 
 import com.wikisprint.server.dto.ApiResponse;
+import com.wikisprint.server.dto.CompleteRecordResponseDTO;
+import com.wikisprint.server.dto.RankingAlertResponseDTO;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
 import com.wikisprint.server.global.common.status.ConflictException;
 import com.wikisprint.server.mapper.AccountMapper;
@@ -128,8 +130,11 @@ public class GameRecordController {
         Long elapsedMs = ((Number) request.get("elapsedMs")).longValue();
 
         try {
-            gameRecordService.completeRecord(accountId, recordId, navPath, elapsedMs);
-            return ResponseEntity.ok(ApiResponse.message("클리어 처리 완료"));
+            RankingAlertResponseDTO rankingAlert = gameRecordService.completeRecord(accountId, recordId, navPath, elapsedMs);
+            CompleteRecordResponseDTO data = CompleteRecordResponseDTO.builder()
+                    .rankingAlert(rankingAlert)
+                    .build();
+            return ResponseEntity.ok(ApiResponse.success(data, "클리어 처리 완료"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("클리어 처리 중 오류가 발생했습니다."));

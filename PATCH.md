@@ -1,3 +1,26 @@
+## v1.16.0 (2026-04-29)
+
+### Added
+- 랭킹 변동 알림 API를 추가했습니다.
+  - `POST /api/ranking/alerts/recent` — 최근 10분, 최대 200건의 알림을 조회합니다.
+  - `RankingAlertService`(`ConcurrentLinkedDeque` 기반)가 alertId/createdAt을 부여하고 만료·트림을 처리합니다.
+- `RankingAlertResponseDTO`, `RankingAlertPlayerDTO`, `CompleteRecordResponseDTO` DTO를 추가했습니다.
+
+### Changed
+- `RankingService.tryInsertRanking()`의 반환형이 `void`에서 `RankingAlertResponseDTO`로 변경됐습니다.
+  - `daily` + `all` 버킷에서만 클리어 전/후 Top100을 비교해 알림을 생성합니다.
+  - 신규 진입(`new-entry`)과 추월(`overtake`) 두 가지 kind로 분기하며, 동순위 이하 변동은 알림을 생성하지 않습니다.
+- `GameRecordService.completeRecord()`가 알림을 publish하고 `RankingAlertResponseDTO`를 반환하도록 변경됐습니다.
+- `GameRecordController` 클리어 응답이 `ApiResponse.success(CompleteRecordResponseDTO)` 래퍼로 변경됐습니다.
+  - `rankingAlert`가 null이면 `@JsonInclude(NON_NULL)`에 의해 응답 JSON에서 생략됩니다.
+
+### Notes
+- Server 버전을 `1.15.3`에서 `1.16.0`으로 올렸습니다.
+
+========================================================================================================
+========================================================================================================
+========================================================================================================
+
 ## v1.15.3 (2026-04-25)
 
 ### Added

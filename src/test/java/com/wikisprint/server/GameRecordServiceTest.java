@@ -6,6 +6,7 @@ import com.wikisprint.server.mapper.GameRecordMapper;
 import com.wikisprint.server.mapper.SharedGameRecordMapper;
 import com.wikisprint.server.mapper.TargetWordMapper;
 import com.wikisprint.server.service.GameRecordService;
+import com.wikisprint.server.service.RankingAlertService;
 import com.wikisprint.server.service.RankingService;
 import com.wikisprint.server.vo.GameRecordVO;
 import com.wikisprint.server.vo.SharedGameRecordVO;
@@ -46,6 +47,9 @@ class GameRecordServiceTest {
     @Mock
     private RankingService rankingService;
 
+    @Mock
+    private RankingAlertService rankingAlertService;
+
     private GameRecordService gameRecordService;
 
     @BeforeEach
@@ -55,7 +59,8 @@ class GameRecordServiceTest {
                 sharedGameRecordMapper,
                 accountMapper,
                 targetWordMapper,
-                rankingService
+                rankingService,
+                rankingAlertService
         );
     }
 

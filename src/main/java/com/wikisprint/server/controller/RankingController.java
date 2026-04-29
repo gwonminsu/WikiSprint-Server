@@ -1,7 +1,9 @@
 package com.wikisprint.server.controller;
 
 import com.wikisprint.server.dto.ApiResponse;
+import com.wikisprint.server.dto.RankingAlertResponseDTO;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
+import com.wikisprint.server.service.RankingAlertService;
 import com.wikisprint.server.service.RankingService;
 import com.wikisprint.server.vo.RankingRecordVO;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -25,6 +27,7 @@ import java.util.Map;
 public class RankingController {
 
     private final RankingService rankingService;
+    private final RankingAlertService rankingAlertService;
     private final JwtTokenProvider jwtTokenProvider;
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -87,6 +90,11 @@ public class RankingController {
         data.put("serverNow", serverNow.toString());
 
         return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    @PostMapping("/alerts/recent")
+    public ResponseEntity<ApiResponse<List<RankingAlertResponseDTO>>> getRecentRankingAlerts() {
+        return ResponseEntity.ok(ApiResponse.success(rankingAlertService.getRecentAlerts()));
     }
 
     private Map<String, Object> rankingRecordToMap(RankingRecordVO r) {

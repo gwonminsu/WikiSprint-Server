@@ -3,6 +3,7 @@ package com.wikisprint.server.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
+import com.wikisprint.server.dto.RankingAlertResponseDTO;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.GameRecordMapper;
 import com.wikisprint.server.mapper.SharedGameRecordMapper;
@@ -40,6 +41,7 @@ public class GameRecordService {
     private final AccountMapper accountMapper;
     private final TargetWordMapper targetWordMapper;
     private final RankingService rankingService;
+    private final RankingAlertService rankingAlertService;
 
     // 게임 시작 시 in_progress 전적 생성
     @Transactional
@@ -88,26 +90,27 @@ public class GameRecordService {
 
     // 게임 클리어 처리 - 랭킹 반영과 FIFO 정리를 포함한다.
     @Transactional
-    public void completeRecord(String accountId, String recordId, String navPath, Long elapsedMs) {
+    public RankingAlertResponseDTO completeRecord(String accountId, String recordId, String navPath, Long elapsedMs) {
         GameRecordVO record = gameRecordMapper.selectRecordById(recordId, accountId);
         validateCompletedPath(record, navPath);
 
         int completed = gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
         if (completed == 0) {
             log.debug("이미 종료된 전적의 클리어 요청을 무시합니다. accountId={}, recordId={}", accountId, recordId);
-            return;
+            return null;
         }
 
         accountMapper.incrementTotalClears(accountId);
         // 최고 기록 갱신
         accountMapper.updateBestRecord(accountId, elapsedMs);
+        RankingAlertResponseDTO rankingAlert = null;
 
         // 랭킹 삽입/갱신 시도
         try {
             if (record != null) {
                 Short diffCode = targetWordMapper.selectDifficultyByWord(record.getTargetWord());
                 int pathLength = parsePathLength(navPath);
-                rankingService.tryInsertRanking(
+                RankingAlertResponseDTO nextAlert = rankingService.tryInsertRanking(
                         accountId,
                         record.getTargetWord(),
                         diffCode,
@@ -115,6 +118,9 @@ public class GameRecordService {
                         pathLength,
                         elapsedMs
                 );
+                if (nextAlert != null) {
+                    rankingAlert = rankingAlertService.publish(nextAlert);
+                }
             }
         } catch (Exception e) {
             // 랭킹 처리 실패는 클리어 처리에 영향을 주지 않는다.
@@ -122,6 +128,7 @@ public class GameRecordService {
         }
 
         gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
+        return rankingAlert;
     }
 
     // navPath JSON 배열 문자열에서 경로 길이(방문 문서 수) 추출

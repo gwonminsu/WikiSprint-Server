@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.15.3-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.16.0-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -387,6 +387,16 @@ google:
 
 </div>
 ---
+
+## 🆕 v1.16.0 문서 메모
+
+### 랭킹 알림 API
+
+- `POST /api/ranking/alerts/recent` (공개) — 최근 10분 / 최대 200건의 랭킹 알림 목록을 반환합니다. 클라이언트 폴링용입니다.
+- `RankingAlertService`가 in-memory `ConcurrentLinkedDeque`로 alertId/createdAt 부여, 만료(10분) 및 최대 건수(200건) 트림을 처리합니다.
+- `RankingService.tryInsertRanking()`이 `daily`+`all` 버킷에서 클리어 전후 Top100을 비교해 `RankingAlertResponseDTO`를 반환합니다.
+  - `kind`: `new-entry`(신규 진입) / `overtake`(추월). 동순위 이하 변동은 알림을 생성하지 않습니다.
+- `GameRecordController.complete` 응답이 `CompleteRecordResponseDTO { rankingAlert }` 래퍼로 변경됐습니다. `rankingAlert`가 null이면 JSON에서 생략됩니다.
 
 ## 🆕 v1.15.3 문서 메모
 
