@@ -330,6 +330,12 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 ---
 
+## 최근 변경 메모 (v1.16.1)
+
+- `DonationResponseDTO`에 `alertCreatedAt` 필드가 추가됐습니다.
+- `DonationService.getRecentAlertDonations()`와 재생 알림 응답이 `event.createdAt()`을 함께 내려줍니다.
+- 일반 후원 응답 DTO 생성도 `receivedAt`을 `alertCreatedAt` fallback으로 포함해 프론트가 알림 재생 기준 시각을 안정적으로 계산할 수 있습니다.
+
 ## 최근 변경 메모 (v1.16.0)
 
 - `POST /api/ranking/alerts/recent` (공개) 엔드포인트와 `RankingAlertService`가 추가됐습니다. in-memory `ConcurrentLinkedDeque`로 최근 10분 / 최대 200건의 알림을 보관합니다.

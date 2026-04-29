@@ -191,6 +191,7 @@ public class DonationService {
                     }
                     DonationResponseDTO response = toResponseDto(donation);
                     response.setAlertId(event.alertId());
+                    response.setAlertCreatedAt(event.createdAt());
                     return response;
                 })
                 .filter(response -> response != null)
@@ -249,6 +250,7 @@ public class DonationService {
 
         DonationResponseDTO response = toResponseDto(donation);
         response.setAlertId(event.alertId());
+        response.setAlertCreatedAt(event.createdAt());
         return response;
     }
 
@@ -305,6 +307,7 @@ public class DonationService {
                 .amount(formatAmount(donation.getAmountCents()))
                 .currency(donation.getCurrency())
                 .isAnonymous(isAnonymous)
+                .alertCreatedAt(donation.getReceivedAt())
                 .receivedAt(donation.getReceivedAt())
                 .build();
     }

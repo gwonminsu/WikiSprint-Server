@@ -26,5 +26,6 @@ public class DonationResponseDTO {
     private String amount;
     private String currency;
     private Boolean isAnonymous;
+    private LocalDateTime alertCreatedAt;
     private LocalDateTime receivedAt;
 }
