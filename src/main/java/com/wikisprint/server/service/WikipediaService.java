@@ -30,7 +30,7 @@ public class WikipediaService {
     private final RestTemplate restTemplate;
 
     private static final String USER_AGENT = "WikiSprint/1.0 (https://github.com/wikisprint; contact@wikisprint.com) RestTemplate";
-    private static final Set<String> ALLOWED_LANGS = Set.of("ko", "en", "ja");
+    private static final Set<String> ALLOWED_LANGS = Set.of("ko", "en", "ja", "zh");
 
     // 캐시 TTL: 1시간 (밀리초)
     private static final long CACHE_TTL_MS = 60 * 60 * 1000L;

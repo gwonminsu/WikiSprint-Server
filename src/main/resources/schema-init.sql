@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS target_words (
     word_id      SERIAL        PRIMARY KEY,
     word         VARCHAR(100)  NOT NULL,
     difficulty   SMALLINT      NOT NULL DEFAULT 1,      -- 1: 쉬움, 2: 보통, 3: 어려움
-    lang         VARCHAR(5)    NOT NULL DEFAULT 'ko',   -- 언어 코드 (ko, en, ja)
+    lang         VARCHAR(5)    NOT NULL DEFAULT 'ko',   -- 언어 코드 (ko, en, ja, zh)
     created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (word, lang)
 );
@@ -47,7 +47,16 @@ INSERT INTO target_words (word, difficulty, lang) VALUES
     ('アメリカ合衆国', 1, 'ja'),
     ('バナナ', 1, 'ja'),
     ('バットマン', 2, 'ja'),
-    ('換気扇', 3, 'ja')
+    ('換気扇', 3, 'ja'),
+    ('北京', 1, 'zh'),
+    ('长城', 1, 'zh'),
+    ('熊猫', 1, 'zh'),
+    ('紫禁城', 2, 'zh'),
+    ('丝绸之路', 2, 'zh'),
+    ('指南针', 2, 'zh'),
+    ('量子力学', 3, 'zh'),
+    ('广义相对论', 3, 'zh'),
+    ('敦煌莫高窟', 3, 'zh')
 ON CONFLICT (word, lang) DO NOTHING;
 
 -- Ko-fi 후원 이력 테이블

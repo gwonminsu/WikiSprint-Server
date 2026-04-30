@@ -21,6 +21,9 @@
 WikiSprint Server는 WikiSprint 게임의 상태를 저장하고, 프론트엔드가 사용하는 JSON API를 제공합니다.  
 Google OAuth 로그인, JWT 인증, 게임 기록 관리, 랭킹 집계, 공유 링크 발급, 후원 처리, 관리자 기능이 이 서버를 중심으로 동작합니다.
 
+- 지원 언어: `ko`, `en`, `ja`, `zh`
+- 위키 문서 호출은 언어 코드 기준으로 `ko.wikipedia.org`, `en.wikipedia.org`, `ja.wikipedia.org`, `zh.wikipedia.org`를 사용합니다.
+
 ### 서버가 담당하는 역할
 
 | 영역 | 설명 |

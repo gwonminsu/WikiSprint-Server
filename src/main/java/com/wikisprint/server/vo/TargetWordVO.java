@@ -16,7 +16,7 @@ public class TargetWordVO {
     /** 난이도: 1(쉬움), 2(보통), 3(어려움) */
     private Short difficulty;
 
-    /** 언어 코드: ko, en, ja */
+    /** 언어 코드: ko, en, ja, zh */
     private String lang;
 
     private LocalDateTime createdAt;
