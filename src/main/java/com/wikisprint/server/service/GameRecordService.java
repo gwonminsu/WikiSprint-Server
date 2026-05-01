@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -90,27 +91,27 @@ public class GameRecordService {
 
     // 게임 클리어 처리 - 랭킹 반영과 FIFO 정리를 포함한다.
     @Transactional
-    public RankingAlertResponseDTO completeRecord(String accountId, String recordId, String navPath, Long elapsedMs) {
+    public List<RankingAlertResponseDTO> completeRecord(String accountId, String recordId, String navPath, Long elapsedMs) {
         GameRecordVO record = gameRecordMapper.selectRecordById(recordId, accountId);
         validateCompletedPath(record, navPath);
 
         int completed = gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
         if (completed == 0) {
             log.debug("이미 종료된 전적의 클리어 요청을 무시합니다. accountId={}, recordId={}", accountId, recordId);
-            return null;
+            return List.of();
         }
 
         accountMapper.incrementTotalClears(accountId);
         // 최고 기록 갱신
         accountMapper.updateBestRecord(accountId, elapsedMs);
-        RankingAlertResponseDTO rankingAlert = null;
+        List<RankingAlertResponseDTO> rankingAlerts = new ArrayList<>();
 
         // 랭킹 삽입/갱신 시도
         try {
             if (record != null) {
                 Short diffCode = targetWordMapper.selectDifficultyByWord(record.getTargetWord());
                 int pathLength = parsePathLength(navPath);
-                RankingAlertResponseDTO nextAlert = rankingService.tryInsertRanking(
+                List<RankingAlertResponseDTO> nextAlerts = rankingService.tryInsertRanking(
                         accountId,
                         record.getTargetWord(),
                         diffCode,
@@ -118,8 +119,8 @@ public class GameRecordService {
                         pathLength,
                         elapsedMs
                 );
-                if (nextAlert != null) {
-                    rankingAlert = rankingAlertService.publish(nextAlert);
+                for (RankingAlertResponseDTO nextAlert : nextAlerts) {
+                    rankingAlerts.add(rankingAlertService.publish(nextAlert));
                 }
             }
         } catch (Exception e) {
@@ -128,7 +129,7 @@ public class GameRecordService {
         }
 
         gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
-        return rankingAlert;
+        return rankingAlerts;
     }
 
     // navPath JSON 배열 문자열에서 경로 길이(방문 문서 수) 추출

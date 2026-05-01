@@ -17,6 +17,8 @@ public class RankingAlertResponseDTO {
     private String alertId;
     private String kind;
     private LocalDateTime createdAt;
+    private String periodType;
+    private String difficulty;
     private RankingAlertPlayerDTO winner;
     private RankingAlertPlayerDTO loser;
     private Integer currentRank;

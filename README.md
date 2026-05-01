@@ -10,7 +10,7 @@
 [![MyBatis](https://img.shields.io/badge/MyBatis-3.0.5-C0392B?style=flat-square)](https://mybatis.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![JWT](https://img.shields.io/badge/JWT-JJWT_0.11.5-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://github.com/jwtk/jjwt)
-[![Version](https://img.shields.io/badge/version-v1.16.1-brightgreen?style=flat-square)](./PATCH.md)
+[![Version](https://img.shields.io/badge/version-v1.16.2-brightgreen?style=flat-square)](./PATCH.md)
 
 </div>
 
@@ -57,7 +57,7 @@ Google OAuth 로그인, JWT 인증, 게임 기록 관리, 랭킹 집계, 공유 
 ### 랭킹 및 후원 흐름
 
 - 랭킹은 기간별 집계 결과를 기반으로 Top 100을 제공합니다.
-- 최근 랭킹 알림 데이터는 프론트 오버레이가 소비할 수 있는 형태로 조회합니다.
+- 최근 랭킹 알림 데이터는 기간/난이도 메타데이터를 포함한 형태로 조회해 프론트 오버레이가 선택한 기간 기준으로 소비할 수 있게 합니다.
 - 후원은 Ko-fi 웹훅과 국내 계좌이체 요청으로 수집합니다.
 - 후원 응답에는 `alertCreatedAt`을 포함해 프론트가 재생 기준 시점을 안정적으로 판단할 수 있게 합니다.
 
@@ -107,7 +107,7 @@ com.wikisprint.server/
 | 컴포넌트 | 설명 |
 |---|---|
 | `GameRecordService` | 기록 생성, 완료, 포기, stale 정리, 공유 기록 연결 |
-| `RankingService` | 기간별 랭킹 계산과 최근 랭킹 알림 조회 |
+| `RankingService` | 기간별 랭킹 계산과 기간/난이도별 랭킹 알림 생성 |
 | `DonationService` | Ko-fi 웹훅, 계좌이체 후원 요청, 관리자 후원 처리 |
 | `FileStorageService` | 프로필 이미지 저장 경로 추상화 |
 
@@ -164,7 +164,7 @@ com.wikisprint.server/
 |---|---|
 | Google 로그인 | ID Token 또는 OAuth code 검증 후 JWT 발급 |
 | 게임 기록 | 시작, 경로 업데이트, 완료/포기 처리 후 기록 저장 |
-| 랭킹 알림 | 최근 진입 및 추월 이벤트를 조회용 데이터로 제공 |
+| 랭킹 알림 | 쉬움, 보통, 어려움의 일간, 주간, 월간 진입 및 추월 이벤트를 조회용 데이터로 제공 |
 | 후원 알림 | `alertCreatedAt`을 포함해 클라이언트가 재생 기준 시점을 판단할 수 있게 제공 |
 | 공유 링크 | `shareId` 발급 후 제한 시간 내 조회 가능 |
 

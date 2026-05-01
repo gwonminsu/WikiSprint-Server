@@ -6,11 +6,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CompleteRecordResponseDTO {
-    private RankingAlertResponseDTO rankingAlert;
+    private List<RankingAlertResponseDTO> rankingAlerts;
 }

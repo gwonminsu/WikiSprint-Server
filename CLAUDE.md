@@ -330,6 +330,14 @@ POST /auth/cancel-deletion (credential: Google ID Token)
 
 ---
 
+## 최근 변경 메모 (v1.16.2)
+
+- `RankingAlertResponseDTO`에 `periodType`, `difficulty` 필드가 추가되어 프론트가 랭킹 알림 버킷을 직접 구분할 수 있습니다.
+- `RankingService.tryInsertRanking()`은 이제 단일 알림이 아니라 알림 목록을 반환하며, 플레이한 난이도의 `daily / weekly / monthly` 버킷에서 각각 알림을 만들 수 있습니다.
+- 랭킹 알림 생성 기준은 기존 `daily + all` 단일 버킷에서 `easy / normal / hard × daily / weekly / monthly` 구조로 확장됐고, `all` 버킷은 집계만 유지합니다.
+- `GameRecordService.completeRecord()`와 `GameRecordController`는 단수 `rankingAlert` 대신 복수 `rankingAlerts` 응답을 사용합니다.
+- `RankingAlertService`의 최근 알림 큐 최대 보관 수는 500건으로 늘었고, `RankingServiceTest`가 추가되어 기간별 알림 생성 범위를 검증합니다.
+
 ## 최근 변경 메모 (v1.16.1)
 
 - `DonationResponseDTO`에 `alertCreatedAt` 필드가 추가됐습니다.

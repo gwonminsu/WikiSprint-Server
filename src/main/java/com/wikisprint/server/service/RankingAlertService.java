@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class RankingAlertService {
 
     private static final int RECENT_ALERT_MINUTES = 10;
-    private static final int MAX_ALERT_EVENTS = 200;
+    private static final int MAX_ALERT_EVENTS = 500;
 
     private final Deque<RankingAlertResponseDTO> recentAlerts = new ConcurrentLinkedDeque<>();
 

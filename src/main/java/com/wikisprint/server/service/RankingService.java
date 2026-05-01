@@ -13,6 +13,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 
 // 랭킹 서비스 — Top 100 유지 구조 (기간 × 난이도 버킷별)
@@ -41,11 +42,11 @@ public class RankingService {
      */
     // REQUIRES_NEW — 게임 클리어 트랜잭션과 분리하여 랭킹 실패 시 클리어 롤백을 방지
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public RankingAlertResponseDTO tryInsertRanking(String accountId, String targetWord, Short diffCode,
-                                                    String startDoc, int pathLength, long elapsedMs) {
+    public List<RankingAlertResponseDTO> tryInsertRanking(String accountId, String targetWord, Short diffCode,
+                                                          String startDoc, int pathLength, long elapsedMs) {
         if (diffCode == null || diffCode < 1 || diffCode > 3) {
             // 알 수 없는 난이도 — 랭킹 스킵
-            return null;
+            return List.of();
         }
 
         String difficultyName = DIFFICULTY_NAMES[diffCode];
@@ -59,19 +60,19 @@ public class RankingService {
         String[] difficulties = { difficultyName, "all" };
         String[] periodTypes  = { "daily", "weekly", "monthly" };
         LocalDate[] buckets   = { today, weekStart, monthStart };
-        RankingAlertResponseDTO rankingAlert = null;
+        List<RankingAlertResponseDTO> rankingAlerts = new ArrayList<>();
 
         for (String diff : difficulties) {
             for (int i = 0; i < periodTypes.length; i++) {
                 RankingAlertResponseDTO nextAlert = upsertRankingRecord(accountId, targetWord, diff,
                         periodTypes[i], buckets[i], startDoc, pathLength, elapsedMs);
-                if (rankingAlert == null && nextAlert != null) {
-                    rankingAlert = nextAlert;
+                if (nextAlert != null) {
+                    rankingAlerts.add(nextAlert);
                 }
             }
         }
 
-        return rankingAlert;
+        return rankingAlerts;
     }
 
     /**
@@ -80,7 +81,7 @@ public class RankingService {
     private RankingAlertResponseDTO upsertRankingRecord(String accountId, String targetWord, String difficulty,
                                                         String periodType, LocalDate bucket,
                                                         String startDoc, int pathLength, long elapsedMs) {
-        boolean shouldTrackAlert = "daily".equals(periodType) && "all".equals(difficulty);
+        boolean shouldTrackAlert = !"all".equals(difficulty);
         List<RankingRecordVO> beforeTop100 = shouldTrackAlert
                 ? rankingMapper.selectTop100(periodType, difficulty, bucket)
                 : List.of();
@@ -199,6 +200,8 @@ public class RankingService {
             RankingRecordVO loserRecord = getRecordAtRank(beforeTop100, afterRank);
             return RankingAlertResponseDTO.builder()
                     .kind(loserRecord == null ? "new-entry" : "overtake")
+                    .periodType(periodType)
+                    .difficulty(difficulty)
                     .winner(toAlertPlayer(winnerRecord))
                     .loser(toAlertPlayer(loserRecord))
                     .currentRank(afterRank)
@@ -214,6 +217,8 @@ public class RankingService {
         RankingRecordVO loserRecord = getRecordAtRank(beforeTop100, afterRank);
         return RankingAlertResponseDTO.builder()
                 .kind("overtake")
+                .periodType(periodType)
+                .difficulty(difficulty)
                 .winner(toAlertPlayer(winnerRecord))
                 .loser(toAlertPlayer(loserRecord))
                 .currentRank(afterRank)

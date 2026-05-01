@@ -130,9 +130,9 @@ public class GameRecordController {
         Long elapsedMs = ((Number) request.get("elapsedMs")).longValue();
 
         try {
-            RankingAlertResponseDTO rankingAlert = gameRecordService.completeRecord(accountId, recordId, navPath, elapsedMs);
+            List<RankingAlertResponseDTO> rankingAlerts = gameRecordService.completeRecord(accountId, recordId, navPath, elapsedMs);
             CompleteRecordResponseDTO data = CompleteRecordResponseDTO.builder()
-                    .rankingAlert(rankingAlert)
+                    .rankingAlerts(rankingAlerts)
                     .build();
             return ResponseEntity.ok(ApiResponse.success(data, "클리어 처리 완료"));
         } catch (Exception e) {

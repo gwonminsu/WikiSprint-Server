@@ -1,5 +1,6 @@
 package com.wikisprint.server;
 
+import com.wikisprint.server.dto.RankingAlertResponseDTO;
 import com.wikisprint.server.global.common.status.ConflictException;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.GameRecordMapper;
@@ -18,7 +19,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -101,6 +104,52 @@ class GameRecordServiceTest {
         verify(accountMapper, never()).updateBestRecord("ACC-1", 12345L);
         verify(rankingService, never()).tryInsertRanking(any(), any(), any(), any(), anyInt(), anyLong());
         verify(gameRecordMapper, never()).deleteOldestRecords("ACC-1", 5);
+    }
+
+    @Test
+    void completeRecord_publishesEveryRankingAlertAndReturnsList() {
+        GameRecordVO record = new GameRecordVO();
+        record.setRecordId("REC-1");
+        record.setAccountId("ACC-1");
+        record.setTargetWord("banana");
+        record.setStartDoc("apple");
+
+        RankingAlertResponseDTO firstAlert = RankingAlertResponseDTO.builder()
+                .kind("new-entry")
+                .periodType("daily")
+                .difficulty("easy")
+                .build();
+        RankingAlertResponseDTO secondAlert = RankingAlertResponseDTO.builder()
+                .kind("overtake")
+                .periodType("weekly")
+                .difficulty("easy")
+                .build();
+        RankingAlertResponseDTO publishedFirstAlert = firstAlert.toBuilder()
+                .alertId("RAL-1")
+                .build();
+        RankingAlertResponseDTO publishedSecondAlert = secondAlert.toBuilder()
+                .alertId("RAL-2")
+                .build();
+
+        when(gameRecordMapper.selectRecordById("REC-1", "ACC-1")).thenReturn(record);
+        when(gameRecordMapper.completeRecord("REC-1", "ACC-1", "[\"apple\",\"banana\"]", 12345L)).thenReturn(1);
+        when(targetWordMapper.selectDifficultyByWord("banana")).thenReturn((short) 1);
+        when(rankingService.tryInsertRanking("ACC-1", "banana", (short) 1, "apple", 2, 12345L))
+                .thenReturn(List.of(firstAlert, secondAlert));
+        when(rankingAlertService.publish(firstAlert)).thenReturn(publishedFirstAlert);
+        when(rankingAlertService.publish(secondAlert)).thenReturn(publishedSecondAlert);
+
+        List<RankingAlertResponseDTO> result = gameRecordService.completeRecord(
+                "ACC-1",
+                "REC-1",
+                "[\"apple\",\"banana\"]",
+                12345L
+        );
+
+        assertThat(result).containsExactly(publishedFirstAlert, publishedSecondAlert);
+        verify(rankingAlertService).publish(firstAlert);
+        verify(rankingAlertService).publish(secondAlert);
+        verify(gameRecordMapper).deleteOldestRecords("ACC-1", 5);
     }
 
     @Test
