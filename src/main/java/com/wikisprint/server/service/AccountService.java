@@ -189,7 +189,7 @@ public class AccountService {
         }
 
         for (int attempt = 0; attempt < CENSORED_NICK_MAX_RETRY; attempt++) {
-            String nick = "검열-" + nicknameGenerator.generateUniqueNickname(accountMapper) + "-검열";
+            String nick = "⚠️" + nicknameGenerator.generateUniqueNickname(accountMapper) + "⚠️";
             if (accountMapper.checkExistedNick(nick)) {
                 continue;
             }
