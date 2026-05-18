@@ -22,6 +22,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 
@@ -36,6 +37,11 @@ public class GameRecordService {
     private static final int STALE_THRESHOLD_MINUTES = 60;
     private static final int SHARE_EXPIRE_HOURS = 24;
     private static final String START_CONFLICT_MESSAGE = "이미 다른 창 또는 탭에서 진행 중인 게임이 있습니다. 먼저 해당 게임을 마무리해 주세요.";
+    private static final long ELAPSED_TOLERANCE_EARLY_MS = 1_000L;  // 클라이언트가 서버보다 최대 1초 짧을 수 있음 (네트워크 지연)
+    private static final long ELAPSED_TOLERANCE_LATE_MS  = 1_000L;  // 시계 어긋남 허용 1초
+    private static final long ELAPSED_MIN_MS             = 1_000L;  // 1초 미만 클리어는 물리적으로 불가능
+    private static final int  NAV_PATH_MAX_SIZE          = 500;
+    private static final int  NAV_PATH_TITLE_MAX_LEN     = 300;
 
     private final GameRecordMapper gameRecordMapper;
     private final SharedGameRecordMapper sharedGameRecordMapper;
@@ -95,7 +101,8 @@ public class GameRecordService {
         GameRecordVO record = gameRecordMapper.selectRecordById(recordId, accountId);
         validateCompletedPath(record, navPath);
 
-        int completed = gameRecordMapper.completeRecord(recordId, accountId, navPath, elapsedMs);
+        long finalElapsedMs = resolveElapsedMs(record, elapsedMs);
+        int completed = gameRecordMapper.completeRecord(recordId, accountId, navPath, finalElapsedMs);
         if (completed == 0) {
             log.debug("이미 종료된 전적의 클리어 요청을 무시합니다. accountId={}, recordId={}", accountId, recordId);
             return List.of();
@@ -103,7 +110,7 @@ public class GameRecordService {
 
         accountMapper.incrementTotalClears(accountId);
         // 최고 기록 갱신
-        accountMapper.updateBestRecord(accountId, elapsedMs);
+        accountMapper.updateBestRecord(accountId, finalElapsedMs);
         List<RankingAlertResponseDTO> rankingAlerts = new ArrayList<>();
 
         // 랭킹 삽입/갱신 시도
@@ -117,7 +124,7 @@ public class GameRecordService {
                         diffCode,
                         record.getStartDoc(),
                         pathLength,
-                        elapsedMs
+                        finalElapsedMs
                 );
                 for (RankingAlertResponseDTO nextAlert : nextAlerts) {
                     rankingAlerts.add(rankingAlertService.publish(nextAlert));
@@ -146,6 +153,37 @@ public class GameRecordService {
         return OBJECT_MAPPER.readValue(navPath, new TypeReference<>() {});
     }
 
+    // 클라이언트 elapsedMs와 서버 계산값을 비교해 신뢰할 수 있는 값을 반환한다.
+    // 정상 범위 내이면 UX 일치를 위해 클라이언트값을 채택하고, 벗어나면 서버값으로 강제한다.
+    private long resolveElapsedMs(GameRecordVO record, Long clientElapsedMs) {
+        long serverElapsedMs = ChronoUnit.MILLIS.between(record.getPlayedAt(), LocalDateTime.now());
+
+        if (clientElapsedMs == null) {
+            return serverElapsedMs;
+        }
+
+        long lowerBound = serverElapsedMs - ELAPSED_TOLERANCE_EARLY_MS;
+        long upperBound = serverElapsedMs + ELAPSED_TOLERANCE_LATE_MS;
+
+        long chosen;
+        if (clientElapsedMs >= lowerBound && clientElapsedMs <= upperBound) {
+            chosen = clientElapsedMs;
+        } else {
+            log.warn("elapsedMs 불일치 감지 - accountId={}, recordId={}, client={}ms, server={}ms",
+                    record.getAccountId(), record.getRecordId(), clientElapsedMs, serverElapsedMs);
+            chosen = serverElapsedMs;
+        }
+
+        // 1초 미만 클리어는 물리적으로 불가능 — 서버값으로 보정
+        if (chosen < ELAPSED_MIN_MS) {
+            log.warn("비현실적 elapsedMs 감지 - accountId={}, recordId={}, chosen={}ms, server={}ms",
+                    record.getAccountId(), record.getRecordId(), chosen, serverElapsedMs);
+            chosen = serverElapsedMs;
+        }
+
+        return Math.max(chosen, ELAPSED_MIN_MS);
+    }
+
     private void validateCompletedPath(GameRecordVO record, String navPath) {
         if (record == null) {
             throw new IllegalArgumentException("완료 처리할 전적을 찾을 수 없습니다.");
@@ -160,6 +198,15 @@ public class GameRecordService {
 
         if (path.isEmpty()) {
             throw new IllegalArgumentException("완료 경로가 비어 있습니다.");
+        }
+
+        if (path.size() > NAV_PATH_MAX_SIZE) {
+            throw new IllegalArgumentException("완료 경로가 허용 범위를 초과했습니다.");
+        }
+
+        boolean hasOversizedTitle = path.stream().anyMatch(s -> s != null && s.length() > NAV_PATH_TITLE_MAX_LEN);
+        if (hasOversizedTitle) {
+            throw new IllegalArgumentException("완료 경로에 허용 범위를 초과한 문서 제목이 포함되어 있습니다.");
         }
 
         String lastArticle = path.get(path.size() - 1);

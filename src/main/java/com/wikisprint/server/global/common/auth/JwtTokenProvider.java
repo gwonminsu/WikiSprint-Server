@@ -18,6 +18,7 @@ import java.security.Key;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -49,6 +50,7 @@ public class JwtTokenProvider {
 
         String refreshToken = Jwts.builder()
                 .setSubject(authentication.getName())
+                .setId(UUID.randomUUID().toString())  // jti: 로그아웃 블랙리스트용
                 .setExpiration(new Date(now + 1209600000))
                 .signWith(refreshKey, SignatureAlgorithm.HS256)
                 .compact();
@@ -119,6 +121,26 @@ public class JwtTokenProvider {
         }
         return true;
     }
+
+    // Refresh 토큰의 jti와 만료 시각을 반환한다. 기존 토큰(jti 없는 경우)은 null 반환.
+    public RefreshTokenMeta getRefreshTokenMeta(String bearerToken) {
+        try {
+            String token = resolveToken(bearerToken);
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(refreshKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            String jti = claims.getId();
+            Date expiry = claims.getExpiration();
+            if (jti == null || expiry == null) return null;
+            return new RefreshTokenMeta(jti, expiry.getTime());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public record RefreshTokenMeta(String jti, long expiryEpochMs) {}
 
     // Bearer 접두사 제거
     private String resolveToken(String bearerToken) {

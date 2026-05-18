@@ -7,6 +7,7 @@ import com.wikisprint.server.dto.ConsentItemDTO;
 import com.wikisprint.server.dto.TokenDTO;
 import com.wikisprint.server.global.common.ConsentConstants;
 import com.wikisprint.server.global.common.auth.JwtTokenProvider;
+import com.wikisprint.server.global.common.auth.TokenBlacklist;
 import com.wikisprint.server.global.common.status.UnauthorizedException;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.ConsentMapper;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 public class AuthService {
     private final AccountMapper accountMapper;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklist tokenBlacklist;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final RestTemplate restTemplate;
     private final NicknameGenerator nicknameGenerator;
@@ -150,6 +152,11 @@ public class AuthService {
             throw new UnauthorizedException("리프레시 토큰이 유효하지 않습니다.");
         }
 
+        JwtTokenProvider.RefreshTokenMeta meta = jwtTokenProvider.getRefreshTokenMeta(refreshToken);
+        if (meta != null && tokenBlacklist.isBlacklisted(meta.jti())) {
+            throw new UnauthorizedException("로그아웃된 토큰입니다.");
+        }
+
         Authentication auth = jwtTokenProvider.getAuthentication(refreshToken, true);
         String uuid = auth.getName();
 
@@ -169,6 +176,16 @@ public class AuthService {
 
         log.info("TOKEN REISSUE SUCCESS uuid: {}", uuid);
         return jwtTokenProvider.createAllToken(authToken);
+    }
+
+    // Refresh 토큰의 jti를 블랙리스트에 추가하여 재사용을 막는다.
+    // jti가 없는 기존 토큰(서버 재시작 전 발급)은 조용히 무시한다.
+    public void logout(String refreshToken) {
+        JwtTokenProvider.RefreshTokenMeta meta = jwtTokenProvider.getRefreshTokenMeta(refreshToken);
+        if (meta != null) {
+            tokenBlacklist.add(meta.jti(), meta.expiryEpochMs());
+            log.info("로그아웃 처리 완료: jti={}", meta.jti());
+        }
     }
 
     /**

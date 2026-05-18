@@ -22,9 +22,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SimpleRateLimitFilter extends OncePerRequestFilter {
 
-    private static final long WINDOW_MILLIS = 60_000L;
-    private static final int WEBHOOK_LIMIT = 60;
-    private static final int DONATION_LIMIT = 30;
+    private static final long WINDOW_MILLIS   = 60_000L;
+    private static final int WEBHOOK_LIMIT    = 60;
+    private static final int DONATION_LIMIT   = 30;
+    private static final int WIKI_LIMIT       = 300;
+    private static final int RECORD_LIMIT     = 120;
+    private static final int REISSUE_LIMIT    = 30;
+    private static final int REPORT_LIMIT     = 20;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, ArrayDeque<Long>> requestHistory = new ConcurrentHashMap<>();
@@ -56,23 +60,29 @@ public class SimpleRateLimitFilter extends OncePerRequestFilter {
     }
 
     private int resolveLimit(String requestUri) {
-        if (requestUri == null) {
-            return 0;
-        }
+        if (requestUri == null) return 0;
 
-        if (requestUri.endsWith("/webhook/kofi") || requestUri.equals("/webhook/kofi")) {
-            return WEBHOOK_LIMIT;
-        }
-
-        if (requestUri.startsWith("/donations") || requestUri.startsWith("/api/donations")) {
-            return DONATION_LIMIT;
-        }
+        if (requestUri.endsWith("/webhook/kofi"))                               return WEBHOOK_LIMIT;
+        if (requestUri.startsWith("/donations") ||
+            requestUri.startsWith("/api/donations"))                            return DONATION_LIMIT;
+        if (requestUri.startsWith("/wiki") ||
+            requestUri.startsWith("/api/wiki"))                                 return WIKI_LIMIT;
+        if (requestUri.startsWith("/record") ||
+            requestUri.startsWith("/api/record"))                               return RECORD_LIMIT;
+        if (requestUri.endsWith("/auth/token/refresh"))                          return REISSUE_LIMIT;
+        if (requestUri.startsWith("/reports") ||
+            requestUri.startsWith("/api/reports"))                              return REPORT_LIMIT;
 
         return 0;
     }
 
+    // X-Forwarded-For 헤더를 우선 읽어 프록시(ALB/CloudFront) 뒤에서도 실제 클라이언트 IP를 키로 사용한다.
     private String buildClientKey(HttpServletRequest request, String requestUri) {
-        return request.getRemoteAddr() + "::" + requestUri;
+        String forwarded = request.getHeader("X-Forwarded-For");
+        String clientIp = (forwarded != null && !forwarded.isBlank())
+                ? forwarded.split(",")[0].trim()
+                : request.getRemoteAddr();
+        return clientIp + "::" + requestUri;
     }
 
     private boolean isRateLimited(String clientKey, int limit) {

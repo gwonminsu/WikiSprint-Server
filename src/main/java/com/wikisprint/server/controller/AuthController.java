@@ -139,6 +139,21 @@ public class AuthController {
     }
 
     /**
+     * 로그아웃 — Refresh 토큰의 jti를 서버 블랙리스트에 추가한다.
+     * jti가 없는 구형 토큰은 조용히 성공 처리(기존 사용자 UX 영향 없음).
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestBody(required = false) Map<String, String> body) {
+        if (body != null) {
+            String refreshToken = body.get("refreshToken");
+            if (refreshToken != null && !refreshToken.isBlank()) {
+                authService.logout(refreshToken);
+            }
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "로그아웃되었습니다."));
+    }
+
+    /**
      * 만료된 accessToken 갱신
      */
     @PostMapping("/token/refresh")
