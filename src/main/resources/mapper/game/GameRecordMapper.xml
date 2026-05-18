@@ -24,6 +24,13 @@
         VALUES (#{recordId}, #{accountId}, #{targetWord}, #{startDoc}, #{navPath}, 'in_progress', #{lastArticle}, #{playedAt})
     </insert>
 
+    <!-- 게스트 복구 전적 직삽입 (cleared 상태, played_at은 elapsedMs 역산) -->
+    <insert id="insertClearedRecord" parameterType="GameRecordVO">
+        INSERT INTO game_records (record_id, account_id, target_word, start_doc, nav_path, elapsed_ms, status, last_article, played_at)
+        VALUES (#{recordId}, #{accountId}, #{targetWord}, #{startDoc}, #{navPath}, #{elapsedMs}, 'cleared', #{lastArticle},
+                NOW() - (#{elapsedMs} * INTERVAL '1 ms'))
+    </insert>
+
     <!-- 경로 및 마지막 문서 업데이트 (in_progress 상태에서만 적용) -->
     <update id="updateNavPath">
         UPDATE game_records

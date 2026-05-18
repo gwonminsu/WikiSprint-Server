@@ -13,6 +13,9 @@ public interface GameRecordMapper {
     /** 전적 생성 (in_progress 상태로 시작) */
     void insertRecord(GameRecordVO record);
 
+    /** 게스트 복구 전적 직삽입 (cleared 상태, played_at = now() - elapsedMs) */
+    void insertClearedRecord(GameRecordVO record);
+
     /** 경로 및 마지막 문서 업데이트 (in_progress 상태에서만) */
     void updateNavPath(
             @Param("recordId") String recordId,

@@ -142,6 +142,48 @@ public class GameRecordController {
     }
 
     /**
+     * 게스트 복구 클리어 직삽입 — start 없이 cleared 상태로 한 번에 기록한다.
+     * Request: { targetWord, navPath (JSON 문자열), elapsedMs }
+     * startDoc은 서버가 navPath[0]에서 추출한다.
+     */
+    @PostMapping("/recover-cleared")
+    public ResponseEntity<?> recoverCleared(
+            @RequestHeader(value = "Authorization", required = false) String accessToken,
+            @RequestBody Map<String, Object> request) {
+
+        Authentication auth;
+        try {
+            auth = resolveAuth(accessToken);
+        } catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("ACCESS_TOKEN_EXPIRED"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("유효하지 않은 액세스 토큰입니다."));
+        }
+
+        String targetWord = (String) request.get("targetWord");
+        String navPath = (String) request.get("navPath");
+        Object elapsedMsRaw = request.get("elapsedMs");
+
+        if (targetWord == null || navPath == null || elapsedMsRaw == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("필수 파라미터가 누락됐습니다."));
+        }
+
+        String accountId = auth.getName();
+        long elapsedMs = ((Number) elapsedMsRaw).longValue();
+
+        try {
+            CompleteRecordResponseDTO data = gameRecordService.recoverClearedRecord(
+                    accountId, targetWord, navPath, elapsedMs);
+            return ResponseEntity.ok(ApiResponse.success(data, "게스트 복구 클리어 처리 완료"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("게스트 복구 처리 중 오류가 발생했습니다."));
+        }
+    }
+
+    /**
      * 포기 처리
      * Request: { recordId }
      */

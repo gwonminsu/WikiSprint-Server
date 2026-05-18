@@ -3,6 +3,7 @@ package com.wikisprint.server.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
+import com.wikisprint.server.dto.CompleteRecordResponseDTO;
 import com.wikisprint.server.dto.RankingAlertResponseDTO;
 import com.wikisprint.server.mapper.AccountMapper;
 import com.wikisprint.server.mapper.GameRecordMapper;
@@ -220,6 +221,65 @@ public class GameRecordService {
                 .trim()
                 .toLowerCase(Locale.ROOT)
                 .replace('_', ' ');
+    }
+
+    // 게스트 복구 클리어 직삽입 — start 없이 cleared 상태로 한 번에 저장한다.
+    // resolveElapsedMs를 거치지 않고 클라 elapsedMs를 그대로 사용한다 (1초 미만만 클램프).
+    // startDoc은 클라 입력 대신 navPath[0]에서 추출해 위조를 차단한다.
+    @Transactional
+    public CompleteRecordResponseDTO recoverClearedRecord(
+            String accountId, String targetWord,
+            String navPath, long clientElapsedMs) {
+
+        GameRecordVO stub = new GameRecordVO();
+        stub.setAccountId(accountId);
+        stub.setTargetWord(targetWord);
+        validateCompletedPath(stub, navPath);
+
+        List<String> path;
+        try {
+            path = parseNavPath(navPath);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("완료 경로 형식이 올바르지 않습니다.");
+        }
+        String startDoc = path.get(0);
+        String lastArticle = path.get(path.size() - 1);
+
+        long finalElapsedMs = Math.max(clientElapsedMs, ELAPSED_MIN_MS);
+
+        String recordId = "REC-" + Generators.timeBasedEpochGenerator().generate().toString();
+        GameRecordVO record = new GameRecordVO();
+        record.setRecordId(recordId);
+        record.setAccountId(accountId);
+        record.setTargetWord(targetWord);
+        record.setStartDoc(startDoc);
+        record.setNavPath(navPath);
+        record.setElapsedMs(finalElapsedMs);
+        record.setLastArticle(lastArticle);
+        gameRecordMapper.insertClearedRecord(record);
+
+        accountMapper.incrementTotalGames(accountId);
+        accountMapper.incrementTotalClears(accountId);
+        accountMapper.updateBestRecord(accountId, finalElapsedMs);
+
+        List<RankingAlertResponseDTO> rankingAlerts = new ArrayList<>();
+        try {
+            Short diffCode = targetWordMapper.selectDifficultyByWord(targetWord);
+            int pathLength = parsePathLength(navPath);
+            List<RankingAlertResponseDTO> nextAlerts = rankingService.tryInsertRanking(
+                    accountId, targetWord, diffCode, startDoc, pathLength, finalElapsedMs);
+            for (RankingAlertResponseDTO nextAlert : nextAlerts) {
+                rankingAlerts.add(rankingAlertService.publish(nextAlert));
+            }
+        } catch (Exception e) {
+            log.warn("게스트 복구 랭킹 처리 실패 - accountId={}, recordId={}: {}", accountId, recordId, e.getMessage());
+        }
+
+        gameRecordMapper.deleteOldestRecords(accountId, MAX_RECORDS);
+        return CompleteRecordResponseDTO.builder()
+                .rankingAlerts(rankingAlerts)
+                .recordId(recordId)
+                .build();
     }
 
     // 게임 포기 처리
